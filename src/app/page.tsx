@@ -1,13 +1,9 @@
-import Link from "next/link";
+// src/app/page.tsx
+import { redirect } from "next/navigation";
 
-export default function HomePage() {
-  return (
-    <div>
-      <h1>Home Page</h1>
-      <p>This is the home page.</p>
+const HomePage = () => {
+  redirect("/chat");
+  return null;
+};
 
-      <Link href="/voice-chat">Voice Chat</Link>
-      <Link href="/chat">Chat</Link>
-    </div>
-  );
-}
+export default HomePage;
