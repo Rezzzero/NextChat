@@ -13,8 +13,9 @@ const Chat = () => {
       </div>
       <div className="max-h-[60%] flex flex-col justify-center">
         {startSession && (
-          <div className="w-full">
+          <div className="w-full my-[60px]">
             <MainLoader />
+            <p className="text-center">Поиск собеседника...</p>
           </div>
         )}
         <button
