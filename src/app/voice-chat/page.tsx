@@ -5,6 +5,9 @@ const VoiceChat = () => {
         <p className="text-[#37527a]">Голосовой чат</p>
         <p>от NextChat.sosal</p>
       </div>
+      <div>
+        <button className="text-[#4fe07f]">Начать Чат</button>
+      </div>
     </div>
   );
 };
