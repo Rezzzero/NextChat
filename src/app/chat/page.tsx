@@ -1,10 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MainLoader from "../components/Loader/MainLoader";
+import { io } from "socket.io-client";
+
+const socket = io("http://localhost:3001");
 
 const Chat = () => {
   const [startSession, setStartSession] = useState(false);
+  useEffect(() => {
+    socket.on("message", (msg) => {
+      console.log("New message: ", msg);
+    });
+
+    return () => {
+      socket.off("message");
+    };
+  }, []);
   return (
     <div className="container max-w-2xl h-[94vh] mx-auto text-2xl bg-[#1c1c1c] text-white">
       <div className="h-[5vh] bg-[#26292e] flex border-b-2 border-[#37527a] p-2 gap-2">
