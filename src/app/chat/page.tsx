@@ -4,9 +4,11 @@ import { useState, useRef } from "react";
 import MainLoader from "../components/Loader/MainLoader";
 import { io, Socket } from "socket.io-client";
 import { DefaultEventsMap } from "socket.io";
+import ChatButton from "../components/button/ChatButton";
 
 const Chat = () => {
   const [startSession, setStartSession] = useState(false);
+  const [connectedUsers, setConnectedUsers] = useState(0);
 
   const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
     null
@@ -28,6 +30,10 @@ const Chat = () => {
         console.log("Connected to server");
       });
 
+      socketRef.current.on("updateUsersCount", (count) => {
+        setConnectedUsers(count);
+      });
+
       socketRef.current.on("disconnect", () => {
         console.log("Disconnected from server");
       });
@@ -42,22 +48,42 @@ const Chat = () => {
         <p>от NextChat.sosal</p>
       </div>
       <div className="max-h-[60%] flex flex-col justify-center">
-        {startSession && (
+        {startSession && connectedUsers < 2 ? (
           <div className="w-full my-[60px]">
             <MainLoader />
             <p className="text-center">Поиск собеседника...</p>
           </div>
+        ) : null}
+        {connectedUsers === 2 && startSession && (
+          <div className="w-full my-[60px] flex flex-col justify-center items-center">
+            <div>вывод сообщений</div>
+            <div className="flex gap-2">
+              <input type="text" className="w-full bg-slate-700" />
+              <button>Отправить</button>
+            </div>
+          </div>
         )}
-        <button
-          className={`max-w-[300px] mx-auto ${
-            startSession
-              ? "text-slate-500 border-slate-500 hover:bg-slate-500 hover:text-[#1c1c1c]"
-              : "text-[#4fe07f] border-[#4fe07f] hover:bg-[#4fe07f] hover:text-[#1c1c1c]"
-          } border-2 py-2 px-6 rounded-[25px]`}
-          onClick={toggleSession}
-        >
-          {startSession ? "Остановить поиск" : "Начать Чат"}
-        </button>
+        {!startSession && (
+          <ChatButton
+            toggleSession={toggleSession}
+            active={true}
+            text="Начать Чат"
+          />
+        )}
+        {startSession && connectedUsers !== 2 && (
+          <ChatButton
+            toggleSession={toggleSession}
+            active={false}
+            text="Остановить Поиск"
+          />
+        )}
+        {startSession && connectedUsers === 2 && (
+          <ChatButton
+            toggleSession={toggleSession}
+            active={false}
+            text="Завершить Чат"
+          />
+        )}
       </div>
     </div>
   );

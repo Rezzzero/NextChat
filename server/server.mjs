@@ -23,11 +23,24 @@ app.get("/", (req, res) => {
   res.sendFile(join(__dirname, "index.html"));
 });
 
+let connectedUsersCount = 0;
+
 io.on("connection", (socket) => {
   console.log("a user connected");
 
+  connectedUsersCount++;
+  console.log(`Количество подключенных пользователей: ${connectedUsersCount}`);
+
+  io.emit("updateUsersCount", connectedUsersCount);
+
   socket.on("disconnect", () => {
     console.log("user disconnected");
+    connectedUsersCount--;
+    console.log(
+      `Количество подключенных пользователей: ${connectedUsersCount}`
+    );
+
+    io.emit("updateUsersCount", connectedUsersCount);
   });
 });
 
