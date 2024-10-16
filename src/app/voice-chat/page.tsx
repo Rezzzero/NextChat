@@ -12,7 +12,7 @@ const VoiceChat = () => {
     null
   );
   const peerRef = useRef<Peer | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
+  const currentCallRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (startSession) {
@@ -37,21 +37,28 @@ const VoiceChat = () => {
         socketRef.current?.on("peer-id", (peerId) => {
           console.log("Received Peer ID: " + peerId);
 
-          if (localStreamRef.current) {
-            const call = peerRef.current?.call(peerId, localStreamRef.current);
-            call?.on("stream", (remoteStream) => {
-              const audio = new Audio();
-              audio.srcObject = remoteStream;
-              audio.play();
+          navigator.mediaDevices
+            .getUserMedia({ audio: true })
+            .then((stream) => {
+              currentCallRef.current = stream;
+              const call = peerRef.current?.call(peerId, stream);
+
+              call?.on("stream", (remoteStream) => {
+                const audio = new Audio();
+                audio.srcObject = remoteStream;
+                audio.play();
+              });
+            })
+            .catch((error) => {
+              console.error("Error accessing audio stream:", error);
             });
-          }
         });
 
         peerRef.current.on("call", (call) => {
           navigator.mediaDevices
             .getUserMedia({ audio: true })
             .then((stream) => {
-              localStreamRef.current = stream;
+              currentCallRef.current = stream;
               call.answer(stream);
 
               call.on("stream", (remoteStream) => {
@@ -59,6 +66,9 @@ const VoiceChat = () => {
                 audio.srcObject = remoteStream;
                 audio.play();
               });
+            })
+            .catch((error) => {
+              console.error("Error accessing audio stream:", error);
             });
         });
       });
