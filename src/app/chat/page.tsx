@@ -28,7 +28,7 @@ const Chat = () => {
         setChatMessages([]);
       }
     } else {
-      socketRef.current = io("http://localhost:3001", {
+      socketRef.current = io("http://localhost:3001/chat", {
         path: "/socket.io",
       });
 
