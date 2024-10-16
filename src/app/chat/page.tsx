@@ -9,6 +9,11 @@ import ChatButton from "../components/button/ChatButton";
 const Chat = () => {
   const [startSession, setStartSession] = useState(false);
   const [connectedUsers, setConnectedUsers] = useState(0);
+  const [message, setMessage] = useState("");
+  const [chatMessages, setChatMessages] = useState<
+    { id: string; message: string }[]
+  >([]);
+  const [chatReady, setChatReady] = useState(false);
 
   const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
     null
@@ -20,6 +25,7 @@ const Chat = () => {
         socketRef.current.disconnect();
         console.log("Socket manually disconnected");
         socketRef.current = null;
+        setChatMessages([]);
       }
     } else {
       socketRef.current = io("http://localhost:3001", {
@@ -34,11 +40,34 @@ const Chat = () => {
         setConnectedUsers(count);
       });
 
-      socketRef.current.on("disconnect", () => {
-        console.log("Disconnected from server");
+      socketRef.current.on("chat ready", () => {
+        setChatReady(true);
       });
+
+      socketRef.current.on("chat not ready", () => {
+        setChatReady(false);
+        setChatMessages([]);
+      });
+
+      socketRef.current.on("disconnect", () => {
+        setChatReady(false);
+      });
+
+      socketRef.current.on(
+        "chat message",
+        (msg: { id: string; message: string }) => {
+          setChatMessages((prevMessages) => [...prevMessages, msg]);
+        }
+      );
     }
     setStartSession(!startSession);
+  };
+
+  const sendMessage = () => {
+    if (socketRef.current) {
+      socketRef.current.emit("chat message", message);
+      setMessage("");
+    }
   };
 
   return (
@@ -47,19 +76,40 @@ const Chat = () => {
         <p className="text-[#37527a]">Чат</p>
         <p>от NextChat.sosal</p>
       </div>
-      <div className="max-h-[60%] flex flex-col justify-center">
-        {startSession && connectedUsers < 2 ? (
+      <div className="max-h-[90%] flex flex-col justify-center">
+        {startSession && connectedUsers < 2 && !chatReady ? (
           <div className="w-full my-[60px]">
             <MainLoader />
             <p className="text-center">Поиск собеседника...</p>
           </div>
         ) : null}
-        {connectedUsers === 2 && startSession && (
-          <div className="w-full my-[60px] flex flex-col justify-center items-center">
-            <div>вывод сообщений</div>
-            <div className="flex gap-2">
-              <input type="text" className="w-full bg-slate-700" />
-              <button>Отправить</button>
+        {chatReady && (
+          <div className="w-full mb-[60px] flex flex-col justify-center items-center">
+            <div className="w-full flex flex-col bg-slate-700 p-4 mb-4 h-[700px] overflow-y-auto">
+              {chatMessages.map((msg, index) => (
+                <p
+                  key={index}
+                  className={`w-[80%] p-2 mb-2 rounded-lg ${
+                    msg.id === socketRef.current?.id
+                      ? "bg-blue-500 text-white self-end"
+                      : "bg-gray-500 text-white"
+                  }`}
+                >
+                  {msg.message}
+                </p>
+              ))}
+            </div>
+            <div className="w-full flex">
+              <input
+                type="text"
+                value={message}
+                className="w-full bg-slate-700"
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              />
+              <button type="button" onClick={sendMessage}>
+                Отправить
+              </button>
             </div>
           </div>
         )}
@@ -77,7 +127,7 @@ const Chat = () => {
             text="Остановить Поиск"
           />
         )}
-        {startSession && connectedUsers === 2 && (
+        {startSession && chatReady && (
           <ChatButton
             toggleSession={toggleSession}
             active={false}

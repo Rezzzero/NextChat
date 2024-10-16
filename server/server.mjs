@@ -23,24 +23,53 @@ app.get("/", (req, res) => {
   res.sendFile(join(__dirname, "index.html"));
 });
 
-let connectedUsersCount = 0;
+let rooms = {};
+
+const findRoom = () => {
+  for (const room in rooms) {
+    if (rooms[room].length < 2) {
+      return room;
+    }
+  }
+
+  const newRoom = `room${Object.keys(rooms).length + 1}`;
+  rooms[newRoom] = [];
+  return newRoom;
+};
 
 io.on("connection", (socket) => {
   console.log("a user connected");
 
-  connectedUsersCount++;
-  console.log(`Количество подключенных пользователей: ${connectedUsersCount}`);
+  const room = findRoom();
+  socket.join(room);
+  rooms[room].push(socket.id);
+  console.log(`Пользователь ${socket.id} подключился к комнате ${room}`);
 
-  io.emit("updateUsersCount", connectedUsersCount);
+  io.to(room).emit("updateUsersCount", rooms[room].length);
+
+  if (rooms[room].length === 2) {
+    io.to(room).emit("chat ready");
+  }
+
+  socket.on("chat message", (msg) => {
+    console.log("message: " + msg);
+    io.to(room).emit("chat message", { id: socket.id, message: msg });
+  });
 
   socket.on("disconnect", () => {
     console.log("user disconnected");
-    connectedUsersCount--;
-    console.log(
-      `Количество подключенных пользователей: ${connectedUsersCount}`
-    );
+    rooms[room] = rooms[room].filter((id) => id !== socket.id);
 
-    io.emit("updateUsersCount", connectedUsersCount);
+    if (rooms[room].length === 0) {
+      delete rooms[room];
+      console.log(`Комната ${room} удалена`);
+    } else {
+      io.to(room).emit("updateUsersCount", rooms[room].length);
+
+      if (rooms[room].length < 2) {
+        io.to(room).emit("chat not ready");
+      }
+    }
   });
 });
 
