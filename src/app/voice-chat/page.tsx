@@ -4,17 +4,34 @@ import Peer from "peerjs";
 import { useEffect, useRef, useState } from "react";
 import { DefaultEventsMap } from "socket.io";
 import { io, Socket } from "socket.io-client";
+import ChatButton from "../components/button/ChatButton";
+import MainLoader from "../components/Loader/MainLoader";
+import MicIcon from "@mui/icons-material/Mic";
+import MicOffIcon from "@mui/icons-material/MicOff";
+import Slider from "rc-slider";
+import "rc-slider/assets/index.css";
 
 const VoiceChat = () => {
   const [startSession, setStartSession] = useState(false);
   const [chatReady, setChatReady] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(100);
   const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
     null
   );
   const peerRef = useRef<Peer | null>(null);
   const currentCallRef = useRef<MediaStream | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    const handleRemoteStream = (remoteStream: MediaStream) => {
+      const audio = new Audio();
+      audio.srcObject = remoteStream;
+      audio.volume = volume / 100;
+      audio.play();
+      audioRef.current = audio;
+    };
+
     if (startSession) {
       socketRef.current = io("http://localhost:3001/voice-chat", {
         path: "/socket.io",
@@ -24,53 +41,70 @@ const VoiceChat = () => {
         console.log("Connected to server");
       });
 
-      socketRef.current.on("chat ready", () => {
-        setChatReady(true);
-
+      socketRef.current.on("is-initiator", (isInitiator: boolean) => {
         peerRef.current = new Peer();
 
         peerRef.current.on("open", (peerId) => {
-          console.log("My Peer ID is:" + peerId);
           socketRef.current?.emit("peer-id", peerId);
         });
 
-        socketRef.current?.on("peer-id", (peerId) => {
-          console.log("Received Peer ID: " + peerId);
+        if (isInitiator) {
+          socketRef.current?.on("peer-id", (peerId) => {
+            if (peerRef.current?.id !== peerId) {
+              navigator.mediaDevices
+                .getUserMedia({ audio: true })
+                .then((stream) => {
+                  currentCallRef.current = stream;
+                  const call = peerRef.current?.call(peerId, stream);
 
-          navigator.mediaDevices
-            .getUserMedia({ audio: true })
-            .then((stream) => {
-              currentCallRef.current = stream;
-              const call = peerRef.current?.call(peerId, stream);
+                  call?.on("stream", handleRemoteStream);
+                })
+                .catch((error) => {
+                  console.error("Error accessing audio stream:", error);
+                });
+            }
+          });
+        } else {
+          peerRef.current.on("call", (call) => {
+            navigator.mediaDevices
+              .getUserMedia({ audio: true })
+              .then((stream) => {
+                currentCallRef.current = stream;
+                call.answer(stream);
 
-              call?.on("stream", (remoteStream) => {
-                const audio = new Audio();
-                audio.srcObject = remoteStream;
-                audio.play();
+                call?.on("stream", handleRemoteStream);
+              })
+              .catch((error) => {
+                console.error("Error accessing audio stream:", error);
               });
-            })
-            .catch((error) => {
-              console.error("Error accessing audio stream:", error);
-            });
-        });
+          });
+        }
+      });
 
-        peerRef.current.on("call", (call) => {
-          navigator.mediaDevices
-            .getUserMedia({ audio: true })
-            .then((stream) => {
-              currentCallRef.current = stream;
-              call.answer(stream);
+      socketRef.current.on("chat ready", () => {
+        setChatReady(true);
+      });
 
-              call.on("stream", (remoteStream) => {
-                const audio = new Audio();
-                audio.srcObject = remoteStream;
-                audio.play();
-              });
-            })
-            .catch((error) => {
-              console.error("Error accessing audio stream:", error);
-            });
-        });
+      socketRef.current.on("end call", () => {
+        setStartSession(false);
+        setChatReady(false);
+        setIsMuted(false);
+        setVolume(100);
+        audioRef.current = null;
+
+        if (currentCallRef.current) {
+          currentCallRef.current.getTracks().forEach((track) => {
+            track.stop();
+          });
+
+          currentCallRef.current = null;
+        }
+
+        if (peerRef.current) {
+          peerRef.current.destroy();
+
+          peerRef.current = null;
+        }
       });
 
       socketRef.current.on("chat not ready", () => {
@@ -79,15 +113,45 @@ const VoiceChat = () => {
 
       return () => {
         socketRef.current?.disconnect();
+        setChatReady(false);
         if (peerRef.current) {
           peerRef.current.destroy();
         }
+        peerRef.current = new Peer();
+        setStartSession(false);
       };
     }
   }, [startSession]);
 
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume / 100;
+    } else {
+      console.log("No audio reference available");
+    }
+  }, [volume]);
+
   const toggleSession = () => {
     setStartSession(!startSession);
+  };
+
+  const toggleMute = () => {
+    if (currentCallRef.current) {
+      const audioTracks = currentCallRef.current.getAudioTracks();
+      audioTracks.forEach((track) => {
+        track.enabled = !track.enabled;
+      });
+      setIsMuted(!isMuted);
+    }
+  };
+
+  const handleVolumeChange = (value: number | number[]) => {
+    const volumeValue = Array.isArray(value) ? value[0] : value;
+
+    setVolume(volumeValue);
+    if (audioRef.current) {
+      audioRef.current.volume = volumeValue / 100;
+    }
   };
 
   return (
@@ -96,18 +160,48 @@ const VoiceChat = () => {
         <p className="text-[#37527a]">Голосовой чат</p>
         <p>от NextChat.sosal</p>
       </div>
-      <div>
+      <div className="flex flex-col justify-center">
         {!startSession && (
-          <button onClick={toggleSession}>Начать голосовой чат</button>
+          <ChatButton
+            toggleSession={toggleSession}
+            active={true}
+            text="Начать разговор"
+          />
         )}
         {startSession && chatReady && (
-          <div>
+          <div className="w-full my-[60px] flex flex-col items-center">
+            <div className="w-[100px] flex justify-center">
+              <Slider
+                min={0}
+                max={100}
+                step={1}
+                value={volume}
+                onChange={handleVolumeChange}
+                trackStyle={{ backgroundColor: "#5138E9" }}
+                handleStyle={{ backgroundColor: "#5138E9" }}
+              />
+            </div>
             <p>Голосовой чат готов!</p>
-            <button onClick={toggleSession}>Завершить голосовой чат</button>
+            <button onClick={toggleMute} className="mute-button">
+              {isMuted ? <MicOffIcon sx={{ color: "red" }} /> : <MicIcon />}
+            </button>
+            <ChatButton
+              toggleSession={toggleSession}
+              active={false}
+              text="Закончить разговор"
+            />
           </div>
         )}
         {startSession && !chatReady && (
-          <p>Поиск собеседника для голосового чата...</p>
+          <div className="w-full my-[60px] flex flex-col items-center">
+            <MainLoader />
+            <p className="text-center">Поиск собеседника...</p>
+            <ChatButton
+              toggleSession={toggleSession}
+              active={false}
+              text="Остановить поиск"
+            />
+          </div>
         )}
       </div>
     </div>

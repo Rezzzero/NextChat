@@ -51,12 +51,9 @@ const findRoom = (type) => {
 const textNamespace = io.of("/chat");
 
 textNamespace.on("connection", (socket) => {
-  console.log("a user connected");
-
   const room = findRoom("text");
   socket.join(room);
   rooms["text"][room].push(socket.id);
-  console.log(`Пользователь ${socket.id} подключился к комнате ${room}`);
 
   textNamespace.to(room).emit("updateUsersCount", rooms["text"][room].length);
 
@@ -65,19 +62,16 @@ textNamespace.on("connection", (socket) => {
   }
 
   socket.on("chat message", (msg) => {
-    console.log("message: " + msg);
     textNamespace
       .to(room)
       .emit("chat message", { id: socket.id, message: msg });
   });
 
   socket.on("disconnect", () => {
-    console.log("user disconnected");
     rooms["text"][room] = rooms["text"][room].filter((id) => id !== socket.id);
 
     if (rooms["text"][room].length === 0) {
       delete rooms["text"][room];
-      console.log(`Комната ${room} удалена`);
     } else {
       textNamespace
         .to(room)
@@ -93,35 +87,34 @@ textNamespace.on("connection", (socket) => {
 const voiceNamespace = io.of("/voice-chat");
 
 voiceNamespace.on("connection", (socket) => {
-  console.log("a user connected to the voice chat");
-
   const room = findRoom("voice");
   socket.join(room);
   rooms["voice"][room].push(socket.id);
-  console.log(`Пользователь ${socket.id} подключился к комнате ${room}`);
 
   voiceNamespace.to(room).emit("updateUsersCount", rooms["voice"][room].length);
+
+  const isInitiator = rooms["voice"][room].length === 1;
+  socket.emit("is-initiator", isInitiator);
 
   if (rooms["voice"][room].length === 2) {
     voiceNamespace.to(room).emit("chat ready");
   }
 
   socket.on("peer-id", (peerId) => {
-    console.log(`Peer ID received: ${peerId}`);
-
     socket.to(room).emit("peer-id", peerId);
   });
 
   socket.on("disconnect", () => {
-    console.log("user disconnected from voice chat");
-
     rooms["voice"][room] = rooms["voice"][room].filter(
       (id) => id !== socket.id
     );
 
+    if (rooms["voice"][room].length === 1) {
+      voiceNamespace.to(room).emit("end call");
+    }
+
     if (rooms["voice"][room].length === 0) {
       delete rooms["voice"][room];
-      console.log(`Комната ${room} удалена`);
     } else {
       voiceNamespace
         .to(room)
