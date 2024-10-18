@@ -4,7 +4,7 @@ import Peer from "peerjs";
 import { useEffect, useRef, useState } from "react";
 import { DefaultEventsMap } from "socket.io";
 import { io, Socket } from "socket.io-client";
-import ChatButton from "../components/button/ChatButton";
+import ChatButton from "../components/buttons/ChatButton";
 import MainLoader from "../components/Loader/MainLoader";
 import MicIcon from "@mui/icons-material/Mic";
 import MicOffIcon from "@mui/icons-material/MicOff";

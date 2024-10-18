@@ -4,7 +4,8 @@ import { useState, useRef } from "react";
 import MainLoader from "../components/Loader/MainLoader";
 import { io, Socket } from "socket.io-client";
 import { DefaultEventsMap } from "socket.io";
-import ChatButton from "../components/button/ChatButton";
+import ChatButton from "../components/buttons/ChatButton";
+import ChatSettings from "../components/Settings/ChatSettings";
 
 const Chat = () => {
   const [startSession, setStartSession] = useState(false);
@@ -85,7 +86,7 @@ const Chat = () => {
         ) : null}
         {chatReady && (
           <div className="w-full mb-[60px] flex flex-col justify-center items-center">
-            <div className="w-full flex flex-col bg-slate-700 p-4 mb-4 h-[700px] overflow-y-auto">
+            <div className="w-full flex flex-col bg-slate-700 py-4 mb-4 h-[700px] overflow-y-auto">
               {chatMessages.map((msg, index) => (
                 <p
                   key={index}
@@ -114,11 +115,14 @@ const Chat = () => {
           </div>
         )}
         {!startSession && (
-          <ChatButton
-            toggleSession={toggleSession}
-            active={true}
-            text="Начать Чат"
-          />
+          <div className="w-full my-[60px] flex flex-col justify-center items-center">
+            <ChatSettings />
+            <ChatButton
+              toggleSession={toggleSession}
+              active={true}
+              text="Начать Чат"
+            />
+          </div>
         )}
         {startSession && connectedUsers !== 2 && (
           <ChatButton
