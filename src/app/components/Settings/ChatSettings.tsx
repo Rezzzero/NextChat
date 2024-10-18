@@ -4,9 +4,33 @@ import FilterButton from "../buttons/FilterButton";
 
 const ChatSettings = () => {
   const [selectedGender, setSelectedGender] = useState<string>("");
+  const [selectedCompanionGender, setSelectedCompanionGender] =
+    useState<string>("");
+  const [selectedAge, setSelectedAge] = useState<string>("");
+  const [selectedCompanionAges, setSelectedCompanionAges] = useState<string[]>(
+    []
+  );
 
   const handleGenderChange = (gender: string) => {
     setSelectedGender(gender);
+  };
+
+  const handleCompanionGenderChange = (gender: string) => {
+    setSelectedCompanionGender(gender);
+  };
+
+  const handleAgeChange = (age: string) => {
+    setSelectedAge(age);
+  };
+
+  const handleCompanionAgeChange = (age: string) => {
+    if (selectedCompanionAges.includes(age)) {
+      setSelectedCompanionAges(
+        selectedCompanionAges.filter((selectedAge) => selectedAge !== age)
+      );
+    } else {
+      setSelectedCompanionAges([...selectedCompanionAges, age]);
+    }
   };
 
   return (
@@ -30,8 +54,8 @@ const ChatSettings = () => {
             <FilterButton
               key={gender.value}
               text={gender.label}
-              isActive={false}
-              onClick={() => {}}
+              isActive={gender.value === selectedCompanionGender}
+              onClick={() => handleCompanionGenderChange(gender.value)}
             />
           ))}
         </div>
@@ -44,8 +68,8 @@ const ChatSettings = () => {
             <FilterButton
               key={age.value}
               text={age.label}
-              isActive={false}
-              onClick={() => {}}
+              isActive={age.value === selectedAge}
+              onClick={() => handleAgeChange(age.value)}
             />
           ))}
         </div>
@@ -56,8 +80,8 @@ const ChatSettings = () => {
             <FilterButton
               key={age.value}
               text={age.label}
-              isActive={false}
-              onClick={() => {}}
+              isActive={selectedCompanionAges.includes(age.value)}
+              onClick={() => handleCompanionAgeChange(age.value)}
             />
           ))}
         </div>

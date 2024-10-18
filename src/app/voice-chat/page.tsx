@@ -10,6 +10,7 @@ import MicIcon from "@mui/icons-material/Mic";
 import MicOffIcon from "@mui/icons-material/MicOff";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
+import ChatSettings from "../components/Settings/ChatSettings";
 
 const VoiceChat = () => {
   const [startSession, setStartSession] = useState(false);
@@ -162,11 +163,14 @@ const VoiceChat = () => {
       </div>
       <div className="flex flex-col justify-center">
         {!startSession && (
-          <ChatButton
-            toggleSession={toggleSession}
-            active={true}
-            text="Начать разговор"
-          />
+          <div className="w-full my-[60px] flex flex-col justify-center items-center">
+            <ChatSettings />
+            <ChatButton
+              toggleSession={toggleSession}
+              active={true}
+              text="Начать разговор"
+            />
+          </div>
         )}
         {startSession && chatReady && (
           <div className="w-full my-[60px] flex flex-col items-center">

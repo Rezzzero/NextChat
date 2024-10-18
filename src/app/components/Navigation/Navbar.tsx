@@ -6,8 +6,8 @@ const Navbar = () => {
       <div className="container max-w-5xl mx-auto flex text-white justify-between pt-4">
         <h1 className="text-2xl font-bold">NextChat.sosal</h1>
         <div className="flex gap-4 text-lg">
-          <Link href="/chat">Chat</Link>
-          <Link href="/voice-chat">Voice Chat</Link>
+          <Link href="/chat">Чат</Link>
+          <Link href="/voice-chat">Голосовой чат</Link>
         </div>
       </div>
     </div>
