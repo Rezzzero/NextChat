@@ -36,6 +36,32 @@ let rooms = {
   voice: {},
 };
 
+const findRoomBySettings = (type, settings) => {
+  for (const room in rooms[type]) {
+    const roomSettings = rooms[type][room].settings;
+
+    if (
+      roomSettings.selectedGender === settings.selectedGender &&
+      roomSettings.selectedAge === settings.selectedAge &&
+      roomSettings.selectedCompanionGender ===
+        settings.selectedCompanionGender &&
+      JSON.stringify(roomSettings.selectedCompanionAges) ===
+        JSON.stringify(settings.selectedCompanionAges)
+    ) {
+      if (rooms[type][room].users.length < 2) {
+        return room;
+      }
+    }
+  }
+
+  const newRoom = `${type}room${Object.keys(rooms).length + 1}`;
+  rooms[type][newRoom] = {
+    users: [],
+    settings,
+  };
+  return newRoom;
+};
+
 const findRoom = (type) => {
   for (const room in rooms[type]) {
     if (rooms[type][room].length < 2) {
@@ -51,36 +77,41 @@ const findRoom = (type) => {
 const textNamespace = io.of("/chat");
 
 textNamespace.on("connection", (socket) => {
-  const room = findRoom("text");
-  socket.join(room);
-  rooms["text"][room].push(socket.id);
+  socket.on("set filters", (settings) => {
+    const room = findRoomBySettings("text", settings);
+    socket.join(room);
+    rooms["text"][room].users.push(socket.id);
 
-  textNamespace.to(room).emit("updateUsersCount", rooms["text"][room].length);
-
-  if (rooms["text"][room].length === 2) {
-    textNamespace.to(room).emit("chat ready");
-  }
-
-  socket.on("chat message", (msg) => {
     textNamespace
       .to(room)
-      .emit("chat message", { id: socket.id, message: msg });
-  });
+      .emit("updateUsersCount", rooms["text"][room].users.length);
 
-  socket.on("disconnect", () => {
-    rooms["text"][room] = rooms["text"][room].filter((id) => id !== socket.id);
-
-    if (rooms["text"][room].length === 0) {
-      delete rooms["text"][room];
-    } else {
+    if (rooms["text"][room].users.length === 2) {
+      textNamespace.to(room).emit("chat ready");
+    }
+    socket.on("chat message", (msg) => {
       textNamespace
         .to(room)
-        .emit("updateUsersCount", rooms["text"][room].length);
+        .emit("chat message", { id: socket.id, message: msg });
+    });
 
-      if (rooms["text"][room].length < 2) {
-        textNamespace.to(room).emit("chat not ready");
+    socket.on("disconnect", () => {
+      rooms["text"][room].users = rooms["text"][room].users.filter(
+        (id) => id !== socket.id
+      );
+
+      if (rooms["text"][room].users.length === 0) {
+        delete rooms["text"][room];
+      } else {
+        textNamespace
+          .to(room)
+          .emit("updateUsersCount", rooms["text"][room].users.length);
+
+        if (rooms["text"][room].users.length < 2) {
+          textNamespace.to(room).emit("chat not ready");
+        }
       }
-    }
+    });
   });
 });
 

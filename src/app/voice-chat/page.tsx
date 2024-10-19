@@ -23,6 +23,17 @@ const VoiceChat = () => {
   const peerRef = useRef<Peer | null>(null);
   const currentCallRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [selectedSettings, setSelectedSettings] = useState<{
+    selectedGender: string;
+    selectedAge: string;
+    selectedCompanionGender: string;
+    selectedCompanionAges: string[];
+  }>({
+    selectedGender: "",
+    selectedAge: "",
+    selectedCompanionGender: "",
+    selectedCompanionAges: [],
+  });
 
   useEffect(() => {
     const handleRemoteStream = (remoteStream: MediaStream) => {
@@ -164,7 +175,10 @@ const VoiceChat = () => {
       <div className="flex flex-col justify-center">
         {!startSession && (
           <div className="w-full my-[60px] flex flex-col justify-center items-center">
-            <ChatSettings />
+            <ChatSettings
+              selectedSettings={selectedSettings}
+              setSelectedSettings={setSelectedSettings}
+            />
             <ChatButton
               toggleSession={toggleSession}
               active={true}

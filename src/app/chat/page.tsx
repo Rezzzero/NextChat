@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import MainLoader from "../components/Loader/MainLoader";
 import { io, Socket } from "socket.io-client";
 import { DefaultEventsMap } from "socket.io";
@@ -15,10 +15,34 @@ const Chat = () => {
     { id: string; message: string }[]
   >([]);
   const [chatReady, setChatReady] = useState(false);
-
   const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
     null
   );
+  const defaultSettings = {
+    selectedGender: "someone",
+    selectedAge: "",
+    selectedCompanionGender: "someone",
+    selectedCompanionAges: [],
+  };
+
+  const [selectedSettings, setSelectedSettings] = useState(() => {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const savedSettings = localStorage.getItem("chatSettings");
+      return savedSettings ? JSON.parse(savedSettings) : defaultSettings;
+    }
+    return defaultSettings;
+  });
+
+  useEffect(() => {
+    const savedSettings = localStorage.getItem("chatSettings");
+    if (savedSettings) {
+      setSelectedSettings(JSON.parse(savedSettings));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("chatSettings", JSON.stringify(selectedSettings));
+  }, [selectedSettings]);
 
   const toggleSession = () => {
     if (startSession) {
@@ -35,6 +59,7 @@ const Chat = () => {
 
       socketRef.current.on("connect", () => {
         console.log("Connected to server");
+        socketRef.current?.emit("set filters", selectedSettings);
       });
 
       socketRef.current.on("updateUsersCount", (count) => {
@@ -116,7 +141,10 @@ const Chat = () => {
         )}
         {!startSession && (
           <div className="w-full my-[60px] flex flex-col justify-center items-center">
-            <ChatSettings />
+            <ChatSettings
+              selectedSettings={selectedSettings}
+              setSelectedSettings={setSelectedSettings}
+            />
             <ChatButton
               toggleSession={toggleSession}
               active={true}

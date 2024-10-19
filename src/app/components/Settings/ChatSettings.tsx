@@ -1,36 +1,53 @@
-import { useState } from "react";
 import { Age, yourGender, companionsGender } from "../../constants/constants";
 import FilterButton from "../buttons/FilterButton";
 
-const ChatSettings = () => {
-  const [selectedGender, setSelectedGender] = useState<string>("");
-  const [selectedCompanionGender, setSelectedCompanionGender] =
-    useState<string>("");
-  const [selectedAge, setSelectedAge] = useState<string>("");
-  const [selectedCompanionAges, setSelectedCompanionAges] = useState<string[]>(
-    []
-  );
+interface ChatSettingsProps {
+  selectedSettings: {
+    selectedGender: string;
+    selectedAge: string;
+    selectedCompanionGender: string;
+    selectedCompanionAges: string[];
+  };
+  setSelectedSettings: React.Dispatch<
+    React.SetStateAction<{
+      selectedGender: string;
+      selectedAge: string;
+      selectedCompanionGender: string;
+      selectedCompanionAges: string[];
+    }>
+  >;
+}
 
+const ChatSettings = ({
+  selectedSettings,
+  setSelectedSettings,
+}: ChatSettingsProps) => {
   const handleGenderChange = (gender: string) => {
-    setSelectedGender(gender);
+    setSelectedSettings((prev) => ({ ...prev, selectedGender: gender }));
   };
 
   const handleCompanionGenderChange = (gender: string) => {
-    setSelectedCompanionGender(gender);
+    setSelectedSettings((prev) => ({
+      ...prev,
+      selectedCompanionGender: gender,
+    }));
   };
 
   const handleAgeChange = (age: string) => {
-    setSelectedAge(age);
+    setSelectedSettings((prev) => ({ ...prev, selectedAge: age }));
   };
 
   const handleCompanionAgeChange = (age: string) => {
-    if (selectedCompanionAges.includes(age)) {
-      setSelectedCompanionAges(
-        selectedCompanionAges.filter((selectedAge) => selectedAge !== age)
-      );
-    } else {
-      setSelectedCompanionAges([...selectedCompanionAges, age]);
-    }
+    setSelectedSettings((prev) => {
+      const isSelected = prev.selectedCompanionAges.includes(age);
+      const newCompanionAges = isSelected
+        ? prev.selectedCompanionAges.filter(
+            (selectedAge) => selectedAge !== age
+          )
+        : [...prev.selectedCompanionAges, age];
+
+      return { ...prev, selectedCompanionAges: newCompanionAges };
+    });
   };
 
   return (
@@ -42,8 +59,9 @@ const ChatSettings = () => {
             <FilterButton
               key={gender.value}
               text={gender.label}
-              isActive={gender.value === selectedGender}
+              isActive={gender.value === selectedSettings.selectedGender}
               onClick={() => handleGenderChange(gender.value)}
+              pickedGender={true}
             />
           ))}
         </div>
@@ -54,8 +72,11 @@ const ChatSettings = () => {
             <FilterButton
               key={gender.value}
               text={gender.label}
-              isActive={gender.value === selectedCompanionGender}
+              isActive={
+                gender.value === selectedSettings.selectedCompanionGender
+              }
               onClick={() => handleCompanionGenderChange(gender.value)}
+              pickedGender={selectedSettings.selectedGender !== "someone"}
             />
           ))}
         </div>
@@ -68,8 +89,9 @@ const ChatSettings = () => {
             <FilterButton
               key={age.value}
               text={age.label}
-              isActive={age.value === selectedAge}
+              isActive={age.value === selectedSettings.selectedAge}
               onClick={() => handleAgeChange(age.value)}
+              pickedGender={selectedSettings.selectedGender !== "someone"}
             />
           ))}
         </div>
@@ -80,8 +102,11 @@ const ChatSettings = () => {
             <FilterButton
               key={age.value}
               text={age.label}
-              isActive={selectedCompanionAges.includes(age.value)}
+              isActive={selectedSettings.selectedCompanionAges.includes(
+                age.value
+              )}
               onClick={() => handleCompanionAgeChange(age.value)}
+              pickedGender={selectedSettings.selectedGender !== "someone"}
             />
           ))}
         </div>
