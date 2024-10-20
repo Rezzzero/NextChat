@@ -36,30 +36,28 @@ let rooms = {
   voice: {},
 };
 
-const findRoomBySettings = (type, settings) => {
-  for (const room in rooms[type]) {
-    const roomSettings = rooms[type][room].settings;
+const users = [];
 
-    if (
-      roomSettings.selectedGender === settings.selectedGender &&
-      roomSettings.selectedAge === settings.selectedAge &&
-      roomSettings.selectedCompanionGender ===
-        settings.selectedCompanionGender &&
-      JSON.stringify(roomSettings.selectedCompanionAges) ===
-        JSON.stringify(settings.selectedCompanionAges)
-    ) {
-      if (rooms[type][room].users.length < 2) {
-        return room;
-      }
-    }
-  }
+const isMatchingRoom = (userA, userB) => {
+  const genderMatchesAB =
+    userA.selectedGender === userB.selectedCompanionGender;
 
-  const newRoom = `${type}room${Object.keys(rooms).length + 1}`;
-  rooms[type][newRoom] = {
-    users: [],
-    settings,
-  };
-  return newRoom;
+  const genderMatchesBA =
+    userB.selectedGender === userA.selectedCompanionGender;
+
+  const ageMatchesAB = userB.selectedCompanionAges.some((ageRange) => {
+    const [minAge, maxAge] = ageRange.split("-").map(Number);
+    const ageA = parseInt(userA.selectedAge.split("-")[0]);
+    return ageA >= minAge && ageA <= maxAge;
+  });
+
+  const ageMatchesBA = userA.selectedCompanionAges.some((ageRange) => {
+    const [minAge, maxAge] = ageRange.split("-").map(Number);
+    const ageB = parseInt(userB.selectedAge.split("-")[0]);
+    return ageB >= minAge && ageB <= maxAge;
+  });
+
+  return genderMatchesAB && genderMatchesBA && ageMatchesAB && ageMatchesBA;
 };
 
 const findRoom = (type) => {
@@ -78,17 +76,46 @@ const textNamespace = io.of("/chat");
 
 textNamespace.on("connection", (socket) => {
   socket.on("set filters", (settings) => {
-    const room = findRoomBySettings("text", settings);
-    socket.join(room);
-    rooms["text"][room].users.push(socket.id);
 
-    textNamespace
-      .to(room)
-      .emit("updateUsersCount", rooms["text"][room].users.length);
+    const match = users.find((existingUser) => {
+      return isMatchingRoom(existingUser.settings, settings);
+    });
 
-    if (rooms["text"][room].users.length === 2) {
+    let room;
+
+    if (match) {
+      room = `textroom-${socket.id}-${match.socketId}`;
+      socket.join(room);
+      match.socket.join(room);
+
+      rooms["text"][room] = {
+        users: [socket.id, match.socketId],
+        settings: settings,
+      };
+
+      textNamespace
+        .to(room)
+        .emit("updateUsersCount", rooms["text"][room].users.length);
+
       textNamespace.to(room).emit("chat ready");
+
+      users.splice(users.indexOf(match), 1);
+    } else {
+      users.push({ socketId: socket.id, settings, socket });
+
+      room = `waitingroom-${socket.id}`;
+      socket.join(room);
+
+      rooms["text"][room] = {
+        users: [socket.id],
+        settings: settings,
+      };
+
+      textNamespace
+        .to(room)
+        .emit("updateUsersCount", rooms["text"][room].users.length);
     }
+
     socket.on("chat message", (msg) => {
       textNamespace
         .to(room)
@@ -100,16 +127,13 @@ textNamespace.on("connection", (socket) => {
         (id) => id !== socket.id
       );
 
-      if (rooms["text"][room].users.length === 0) {
-        delete rooms["text"][room];
-      } else {
-        textNamespace
-          .to(room)
-          .emit("updateUsersCount", rooms["text"][room].users.length);
+      textNamespace
+        .to(room)
+        .emit("updateUsersCount", rooms["text"][room].users.length);
 
-        if (rooms["text"][room].users.length < 2) {
-          textNamespace.to(room).emit("chat not ready");
-        }
+      if (rooms["text"][room].users.length < 2) {
+        textNamespace.to(room).emit("chat not ready");
+        delete rooms["text"][room];
       }
     });
   });
