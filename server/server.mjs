@@ -37,6 +37,7 @@ let rooms = {
 };
 
 const users = [];
+const voiceUsers = [];
 
 const isMatchingRoom = (userA, userB) => {
   const genderMatchesAB =
@@ -60,23 +61,10 @@ const isMatchingRoom = (userA, userB) => {
   return genderMatchesAB && genderMatchesBA && ageMatchesAB && ageMatchesBA;
 };
 
-const findRoom = (type) => {
-  for (const room in rooms[type]) {
-    if (rooms[type][room].length < 2) {
-      return room;
-    }
-  }
-
-  const newRoom = `${type}room${Object.keys(rooms).length + 1}`;
-  rooms[type][newRoom] = [];
-  return newRoom;
-};
-
 const textNamespace = io.of("/chat");
 
 textNamespace.on("connection", (socket) => {
   socket.on("set filters", (settings) => {
-
     const match = users.find((existingUser) => {
       return isMatchingRoom(existingUser.settings, settings);
     });
@@ -142,43 +130,72 @@ textNamespace.on("connection", (socket) => {
 const voiceNamespace = io.of("/voice-chat");
 
 voiceNamespace.on("connection", (socket) => {
-  const room = findRoom("voice");
-  socket.join(room);
-  rooms["voice"][room].push(socket.id);
+  socket.on("set filters", (settings) => {
+    const match = voiceUsers.find((existingUser) => {
+      return isMatchingRoom(existingUser.settings, settings);
+    });
 
-  voiceNamespace.to(room).emit("updateUsersCount", rooms["voice"][room].length);
+    let room;
 
-  const isInitiator = rooms["voice"][room].length === 1;
-  socket.emit("is-initiator", isInitiator);
+    if (match) {
+      room = `voiceroom-${socket.id}-${match.socketId}`;
+      socket.join(room);
+      match.socket.join(room);
 
-  if (rooms["voice"][room].length === 2) {
-    voiceNamespace.to(room).emit("chat ready");
-  }
+      rooms["voice"][room] = {
+        users: [socket.id, match.socketId],
+        settings: settings,
+      };
 
-  socket.on("peer-id", (peerId) => {
-    socket.to(room).emit("peer-id", peerId);
-  });
+      voiceNamespace
+        .to(room)
+        .emit("updateUsersCount", rooms["voice"][room].users.length);
 
-  socket.on("disconnect", () => {
-    rooms["voice"][room] = rooms["voice"][room].filter(
-      (id) => id !== socket.id
-    );
+      match.socket.emit("is-initiator", true);
+      socket.emit("is-initiator", false);
 
-    if (rooms["voice"][room].length === 1) {
-      voiceNamespace.to(room).emit("end call");
+      voiceNamespace.to(room).emit("chat ready");
+
+      socket.on("peer-id", (peerId) => {
+        socket.to(room).emit("peer-id", peerId);
+      });
+
+      voiceUsers.splice(voiceUsers.indexOf(match), 1);
+    } else {
+      voiceUsers.push({ socketId: socket.id, settings, socket });
+
+      room = `waitingroom-${socket.id}`;
+      socket.join(room);
+
+      rooms["voice"][room] = {
+        users: [socket.id],
+        settings: settings,
+      };
+
+      voiceNamespace
+        .to(room)
+        .emit("updateUsersCount", rooms["voice"][room].users.length);
     }
 
-    if (rooms["voice"][room].length === 0) {
-      delete rooms["voice"][room];
-    } else {
+    socket.on("disconnect", () => {
+      if (rooms["voice"][room]) {
+        rooms["voice"][room].users = rooms["voice"][room].users.filter(
+          (id) => id !== socket.id
+        );
+      }
+
+      if (rooms["voice"][room].users.length === 1) {
+        voiceNamespace.to(room).emit("end call");
+      }
       voiceNamespace
         .to(room)
         .emit("updateUsersCount", rooms["voice"][room].length);
 
-      if (rooms["voice"][room].length < 2) {
+      if (rooms["voice"][room].users.length < 2) {
         voiceNamespace.to(room).emit("voice chat not ready");
+        delete rooms["voice"][room];
       }
-    }
+    });
   });
 });
 

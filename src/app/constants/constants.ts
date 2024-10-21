@@ -1,3 +1,10 @@
+export const defaultSettings = {
+  selectedGender: "someone",
+  selectedAge: "",
+  selectedCompanionGender: "someone",
+  selectedCompanionAges: [],
+};
+
 export const yourGender = [
   {
     value: "someone",
