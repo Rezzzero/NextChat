@@ -73,6 +73,10 @@ textNamespace.on("connection", (socket) => {
 
     if (match) {
       room = `textroom-${socket.id}-${match.socketId}`;
+
+      socket.leave(`waitingroom-${socket.id}`);
+      match.socket.leave(`waitingroom-${match.socketId}`);
+
       socket.join(room);
       match.socket.join(room);
 
@@ -88,6 +92,9 @@ textNamespace.on("connection", (socket) => {
       textNamespace.to(room).emit("chat ready");
 
       users.splice(users.indexOf(match), 1);
+
+      socket.room = room;
+      match.socket.room = room;
     } else {
       users.push({ socketId: socket.id, settings, socket });
 
@@ -102,26 +109,33 @@ textNamespace.on("connection", (socket) => {
       textNamespace
         .to(room)
         .emit("updateUsersCount", rooms["text"][room].users.length);
+
+      socket.room = room;
     }
 
     socket.on("chat message", (msg) => {
+      console.log(msg, "sending to room: ", socket.room);
       textNamespace
-        .to(room)
+        .to(socket.room)
         .emit("chat message", { id: socket.id, message: msg });
     });
 
     socket.on("disconnect", () => {
-      rooms["text"][room].users = rooms["text"][room].users.filter(
-        (id) => id !== socket.id
-      );
+      const room = socket.room;
 
-      textNamespace
-        .to(room)
-        .emit("updateUsersCount", rooms["text"][room].users.length);
+      if (rooms["text"][room]) {
+        rooms["text"][room].users = rooms["text"][room].users.filter(
+          (id) => id !== socket.id
+        );
 
-      if (rooms["text"][room].users.length < 2) {
-        textNamespace.to(room).emit("chat not ready");
-        delete rooms["text"][room];
+        textNamespace
+          .to(room)
+          .emit("updateUsersCount", rooms["text"][room].users.length);
+
+        if (rooms["text"][room].users.length < 2) {
+          textNamespace.to(room).emit("chat not ready");
+          delete rooms["text"][room];
+        }
       }
     });
   });

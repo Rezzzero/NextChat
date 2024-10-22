@@ -57,6 +57,7 @@ const Chat = () => {
       });
 
       socketRef.current.on("updateUsersCount", (count) => {
+        console.log("Users connected: ", count);
         setConnectedUsers(count);
       });
 
