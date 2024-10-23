@@ -114,7 +114,6 @@ textNamespace.on("connection", (socket) => {
     }
 
     socket.on("chat message", (msg) => {
-      console.log(msg, "sending to room: ", socket.room);
       textNamespace
         .to(socket.room)
         .emit("chat message", { id: socket.id, message: msg });
@@ -153,6 +152,10 @@ voiceNamespace.on("connection", (socket) => {
 
     if (match) {
       room = `voiceroom-${socket.id}-${match.socketId}`;
+
+      socket.leave(`waitingroom-${socket.id}`);
+      match.socket.leave(`waitingroom-${match.socketId}`);
+
       socket.join(room);
       match.socket.join(room);
 
@@ -175,6 +178,9 @@ voiceNamespace.on("connection", (socket) => {
       });
 
       voiceUsers.splice(voiceUsers.indexOf(match), 1);
+
+      socket.room = room;
+      match.socket.room = room;
     } else {
       voiceUsers.push({ socketId: socket.id, settings, socket });
 
@@ -189,25 +195,29 @@ voiceNamespace.on("connection", (socket) => {
       voiceNamespace
         .to(room)
         .emit("updateUsersCount", rooms["voice"][room].users.length);
+
+      socket.room = room;
     }
 
     socket.on("disconnect", () => {
+      const room = socket.room;
+
       if (rooms["voice"][room]) {
         rooms["voice"][room].users = rooms["voice"][room].users.filter(
           (id) => id !== socket.id
         );
-      }
 
-      if (rooms["voice"][room].users.length === 1) {
-        voiceNamespace.to(room).emit("end call");
-      }
-      voiceNamespace
-        .to(room)
-        .emit("updateUsersCount", rooms["voice"][room].length);
+        if (rooms["voice"][room].users.length === 1) {
+          voiceNamespace.to(room).emit("end call");
+        }
+        voiceNamespace
+          .to(room)
+          .emit("updateUsersCount", rooms["voice"][room].users.length);
 
-      if (rooms["voice"][room].users.length < 2) {
-        voiceNamespace.to(room).emit("voice chat not ready");
-        delete rooms["voice"][room];
+        if (rooms["voice"][room].users.length < 2) {
+          voiceNamespace.to(room).emit("voice chat not ready");
+          delete rooms["voice"][room];
+        }
       }
     });
   });

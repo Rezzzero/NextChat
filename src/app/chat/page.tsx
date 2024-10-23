@@ -42,7 +42,6 @@ const Chat = () => {
     if (startSession) {
       if (socketRef.current) {
         socketRef.current.disconnect();
-        console.log("Socket manually disconnected");
         socketRef.current = null;
         setChatMessages([]);
       }
@@ -52,12 +51,10 @@ const Chat = () => {
       });
 
       socketRef.current.on("connect", () => {
-        console.log("Connected to server");
         socketRef.current?.emit("set filters", selectedSettings);
       });
 
       socketRef.current.on("updateUsersCount", (count) => {
-        console.log("Users connected: ", count);
         setConnectedUsers(count);
       });
 
