@@ -40,23 +40,48 @@ const users = [];
 const voiceUsers = [];
 
 const isMatchingRoom = (userA, userB) => {
-  const genderMatchesAB =
-    userA.selectedGender === userB.selectedCompanionGender;
+  const isMatchingGender = (userA, userB) => {
+    const genderA = userA.selectedGender;
+    const genderB = userB.selectedGender;
+    const companionGenderA = userA.selectedCompanionGender;
+    const companionGenderB = userB.selectedCompanionGender;
 
-  const genderMatchesBA =
-    userB.selectedGender === userA.selectedCompanionGender;
+    const isASelectingSomeone = genderA === "someone";
+    const isBSelectingSomeone = genderB === "someone";
 
-  const ageMatchesAB = userB.selectedCompanionAges.some((ageRange) => {
-    const [minAge, maxAge] = ageRange.split("-").map(Number);
-    const ageA = parseInt(userA.selectedAge.split("-")[0]);
-    return ageA >= minAge && ageA <= maxAge;
-  });
+    return (
+      isASelectingSomeone ||
+      isBSelectingSomeone ||
+      (companionGenderA === "someone" && genderB === "male") ||
+      (companionGenderB === "someone" && genderA === "male") ||
+      (genderA === "female" && genderB === "female") ||
+      genderA === companionGenderB ||
+      genderB === companionGenderA
+    );
+  };
 
-  const ageMatchesBA = userA.selectedCompanionAges.some((ageRange) => {
-    const [minAge, maxAge] = ageRange.split("-").map(Number);
-    const ageB = parseInt(userB.selectedAge.split("-")[0]);
-    return ageB >= minAge && ageB <= maxAge;
-  });
+  const genderMatchesAB = isMatchingGender(userA, userB);
+  const genderMatchesBA = isMatchingGender(userB, userA);
+
+  const ageMatchesAB =
+    userA.selectedGender === "someone" ||
+    (userB.selectedCompanionAges.length === 0
+      ? true
+      : userB.selectedCompanionAges.some((ageRange) => {
+          const [minAge, maxAge] = ageRange.split("-").map(Number);
+          const ageA = parseInt(userA.selectedAge.split("-")[0]);
+          return ageA >= minAge && ageA <= maxAge;
+        }));
+
+  const ageMatchesBA =
+    userB.selectedGender === "someone" ||
+    (userA.selectedCompanionAges.length === 0
+      ? true
+      : userA.selectedCompanionAges.some((ageRange) => {
+          const [minAge, maxAge] = ageRange.split("-").map(Number);
+          const ageB = parseInt(userB.selectedAge.split("-")[0]);
+          return ageB >= minAge && ageB <= maxAge;
+        }));
 
   return genderMatchesAB && genderMatchesBA && ageMatchesAB && ageMatchesBA;
 };
@@ -112,6 +137,14 @@ textNamespace.on("connection", (socket) => {
 
       socket.room = room;
     }
+
+    socket.on("leave waiting room", () => {
+      users.splice(
+        users.findIndex((user) => user.socketId === socket.id),
+        1
+      );
+      socket.leave(`waitingroom-${socket.id}`);
+    });
 
     socket.on("chat message", (msg) => {
       textNamespace
@@ -198,6 +231,14 @@ voiceNamespace.on("connection", (socket) => {
 
       socket.room = room;
     }
+
+    socket.on("leave waiting room", () => {
+      voiceUsers.splice(
+        voiceUsers.findIndex((user) => user.socketId === socket.id),
+        1
+      );
+      socket.leave(`waitingroom-${socket.id}`);
+    });
 
     socket.on("disconnect", () => {
       const room = socket.room;

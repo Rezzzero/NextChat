@@ -24,6 +24,14 @@ const ChatSettings = ({
 }: ChatSettingsProps) => {
   const handleGenderChange = (gender: string) => {
     setSelectedSettings((prev) => ({ ...prev, selectedGender: gender }));
+    if (gender === "someone") {
+      setSelectedSettings((prev) => ({
+        ...prev,
+        selectedCompanionGender: "someone",
+        selectedCompanionAges: [],
+        selectedAge: "",
+      }));
+    }
   };
 
   const handleCompanionGenderChange = (gender: string) => {
@@ -110,6 +118,14 @@ const ChatSettings = ({
             />
           ))}
         </div>
+      </div>
+      <div>
+        {selectedSettings.selectedGender !== "someone" &&
+          !selectedSettings.selectedAge && (
+            <p className="text-lg font-bold text-red-500">
+              Выберите ваш возраст
+            </p>
+          )}
       </div>
     </div>
   );

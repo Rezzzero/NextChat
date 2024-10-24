@@ -7,6 +7,7 @@ import { DefaultEventsMap } from "socket.io";
 import ChatButton from "../components/buttons/ChatButton";
 import ChatSettings from "../components/Settings/ChatSettings";
 import { defaultSettings } from "../constants/constants";
+import StartButton from "../components/buttons/StartButton";
 
 const Chat = () => {
   const [startSession, setStartSession] = useState(false);
@@ -19,31 +20,39 @@ const Chat = () => {
   const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
     null
   );
-  const [selectedSettings, setSelectedSettings] = useState(() => {
-    if (typeof window !== "undefined" && window.localStorage) {
-      const savedSettings = localStorage.getItem("chatSettings");
-      return savedSettings ? JSON.parse(savedSettings) : defaultSettings;
-    }
-    return defaultSettings;
-  });
+  const [selectedSettings, setSelectedSettings] = useState<{
+    selectedGender: string;
+    selectedAge: string;
+    selectedCompanionGender: string;
+    selectedCompanionAges: string[];
+  }>(defaultSettings);
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem("chatSettings");
-    if (savedSettings) {
-      setSelectedSettings(JSON.parse(savedSettings));
+    if (typeof window !== "undefined" && window.localStorage) {
+      const savedSettings = localStorage.getItem("chatSettings");
+      if (savedSettings) {
+        setSelectedSettings(JSON.parse(savedSettings));
+      }
+      setIsSettingsLoaded(true);
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("chatSettings", JSON.stringify(selectedSettings));
-  }, [selectedSettings]);
+    if (isSettingsLoaded) {
+      localStorage.setItem("chatSettings", JSON.stringify(selectedSettings));
+    }
+  }, [selectedSettings, isSettingsLoaded]);
 
   const toggleSession = () => {
     if (startSession) {
       if (socketRef.current) {
+        socketRef.current.emit("leave waiting room");
         socketRef.current.disconnect();
         socketRef.current = null;
         setChatMessages([]);
+        setStartSession(false);
+        setChatReady(false);
       }
     } else {
       socketRef.current = io("http://localhost:3001/chat", {
@@ -63,6 +72,7 @@ const Chat = () => {
       });
 
       socketRef.current.on("chat not ready", () => {
+        setStartSession(false);
         setChatReady(false);
         setChatMessages([]);
       });
@@ -92,7 +102,7 @@ const Chat = () => {
     <div className="container max-w-2xl h-[94vh] mx-auto text-2xl bg-[#1c1c1c] text-white">
       <div className="h-[5vh] bg-[#26292e] flex border-b-2 border-[#37527a] p-2 gap-2">
         <p className="text-[#37527a]">Чат</p>
-        <p>от NextChat.sosal</p>
+        <p>от NextChat.com</p>
       </div>
       <div className="max-h-[90%] flex flex-col justify-center">
         {startSession && connectedUsers < 2 && !chatReady ? (
@@ -137,26 +147,22 @@ const Chat = () => {
               selectedSettings={selectedSettings}
               setSelectedSettings={setSelectedSettings}
             />
-            <ChatButton
+            <StartButton
+              agePicked={
+                selectedSettings.selectedGender === "someone" ||
+                (selectedSettings.selectedGender !== "someone" &&
+                  selectedSettings.selectedAge)
+              }
               toggleSession={toggleSession}
-              active={true}
               text="Начать Чат"
             />
           </div>
         )}
         {startSession && connectedUsers !== 2 && (
-          <ChatButton
-            toggleSession={toggleSession}
-            active={false}
-            text="Остановить Поиск"
-          />
+          <ChatButton toggleSession={toggleSession} text="Остановить Поиск" />
         )}
         {startSession && chatReady && (
-          <ChatButton
-            toggleSession={toggleSession}
-            active={false}
-            text="Завершить Чат"
-          />
+          <ChatButton toggleSession={toggleSession} text="Завершить Чат" />
         )}
       </div>
     </div>

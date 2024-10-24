@@ -12,6 +12,7 @@ import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
 import ChatSettings from "../components/Settings/ChatSettings";
 import { defaultSettings } from "../constants/constants";
+import StartButton from "../components/buttons/StartButton";
 
 const VoiceChat = () => {
   const [startSession, setStartSession] = useState(false);
@@ -24,24 +25,32 @@ const VoiceChat = () => {
   const peerRef = useRef<Peer | null>(null);
   const currentCallRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [selectedSettings, setSelectedSettings] = useState(() => {
-    if (typeof window !== "undefined" && window.localStorage) {
-      const savedSettings = localStorage.getItem("voiceChatSettings");
-      return savedSettings ? JSON.parse(savedSettings) : defaultSettings;
-    }
-    return defaultSettings;
-  });
+  const [selectedSettings, setSelectedSettings] = useState<{
+    selectedGender: string;
+    selectedAge: string;
+    selectedCompanionGender: string;
+    selectedCompanionAges: string[];
+  }>(defaultSettings);
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem("voiceChatSettings");
-    if (savedSettings) {
-      setSelectedSettings(JSON.parse(savedSettings));
+    if (typeof window !== "undefined" && window.localStorage) {
+      const savedSettings = localStorage.getItem("voiceChatSettings");
+      if (savedSettings) {
+        setSelectedSettings(JSON.parse(savedSettings));
+      }
+      setIsSettingsLoaded(true);
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("voiceChatSettings", JSON.stringify(selectedSettings));
-  }, [selectedSettings]);
+    if (isSettingsLoaded) {
+      localStorage.setItem(
+        "voiceChatSettings",
+        JSON.stringify(selectedSettings)
+      );
+    }
+  }, [selectedSettings, isSettingsLoaded]);
 
   useEffect(() => {
     const handleRemoteStream = (remoteStream: MediaStream) => {
@@ -132,6 +141,7 @@ const VoiceChat = () => {
       });
 
       return () => {
+        socketRef.current?.emit("leave waiting room");
         socketRef.current?.disconnect();
         setChatReady(false);
         if (peerRef.current) {
@@ -178,7 +188,7 @@ const VoiceChat = () => {
     <div className="container max-w-2xl h-[94vh] mx-auto text-2xl bg-[#1c1c1c] text-white">
       <div className="h-[5vh] bg-[#26292e] flex border-b-2 border-[#37527a] p-2 gap-2">
         <p className="text-[#37527a]">Голосовой чат</p>
-        <p>от NextChat.sosal</p>
+        <p>от NextChat.com</p>
       </div>
       <div className="flex flex-col justify-center">
         {!startSession && (
@@ -187,9 +197,13 @@ const VoiceChat = () => {
               selectedSettings={selectedSettings}
               setSelectedSettings={setSelectedSettings}
             />
-            <ChatButton
+            <StartButton
+              agePicked={
+                selectedSettings.selectedGender === "someone" ||
+                (selectedSettings.selectedGender !== "someone" &&
+                  selectedSettings.selectedAge)
+              }
               toggleSession={toggleSession}
-              active={true}
               text="Начать разговор"
             />
           </div>
@@ -213,7 +227,6 @@ const VoiceChat = () => {
             </button>
             <ChatButton
               toggleSession={toggleSession}
-              active={false}
               text="Закончить разговор"
             />
           </div>
@@ -222,11 +235,7 @@ const VoiceChat = () => {
           <div className="w-full my-[60px] flex flex-col items-center">
             <MainLoader />
             <p className="text-center">Поиск собеседника...</p>
-            <ChatButton
-              toggleSession={toggleSession}
-              active={false}
-              text="Остановить поиск"
-            />
+            <ChatButton toggleSession={toggleSession} text="Остановить поиск" />
           </div>
         )}
       </div>
