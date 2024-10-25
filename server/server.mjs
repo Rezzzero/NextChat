@@ -5,6 +5,13 @@ import { dirname, join } from "node:path";
 import { Server } from "socket.io";
 import cors from "cors";
 import { ExpressPeerServer } from "peer";
+import {
+  isMatchConnecting,
+  leaveWaitingRoom,
+  disconnectSocket,
+  connectingToWaitingRoom,
+  isMatchingRoom,
+} from "./utils/utils.mjs";
 
 const app = express();
 const httpServer = createServer(app);
@@ -39,53 +46,6 @@ let rooms = {
 const users = [];
 const voiceUsers = [];
 
-const isMatchingRoom = (userA, userB) => {
-  const isMatchingGender = (userA, userB) => {
-    const genderA = userA.selectedGender;
-    const genderB = userB.selectedGender;
-    const companionGenderA = userA.selectedCompanionGender;
-    const companionGenderB = userB.selectedCompanionGender;
-
-    const isASelectingSomeone = genderA === "someone";
-    const isBSelectingSomeone = genderB === "someone";
-
-    return (
-      isASelectingSomeone ||
-      isBSelectingSomeone ||
-      (companionGenderA === "someone" && genderB === "male") ||
-      (companionGenderB === "someone" && genderA === "male") ||
-      (genderA === "female" && genderB === "female") ||
-      genderA === companionGenderB ||
-      genderB === companionGenderA
-    );
-  };
-
-  const genderMatchesAB = isMatchingGender(userA, userB);
-  const genderMatchesBA = isMatchingGender(userB, userA);
-
-  const ageMatchesAB =
-    userA.selectedGender === "someone" ||
-    (userB.selectedCompanionAges.length === 0
-      ? true
-      : userB.selectedCompanionAges.some((ageRange) => {
-          const [minAge, maxAge] = ageRange.split("-").map(Number);
-          const ageA = parseInt(userA.selectedAge.split("-")[0]);
-          return ageA >= minAge && ageA <= maxAge;
-        }));
-
-  const ageMatchesBA =
-    userB.selectedGender === "someone" ||
-    (userA.selectedCompanionAges.length === 0
-      ? true
-      : userA.selectedCompanionAges.some((ageRange) => {
-          const [minAge, maxAge] = ageRange.split("-").map(Number);
-          const ageB = parseInt(userB.selectedAge.split("-")[0]);
-          return ageB >= minAge && ageB <= maxAge;
-        }));
-
-  return genderMatchesAB && genderMatchesBA && ageMatchesAB && ageMatchesBA;
-};
-
 const textNamespace = io.of("/chat");
 
 textNamespace.on("connection", (socket) => {
@@ -97,53 +57,30 @@ textNamespace.on("connection", (socket) => {
     let room;
 
     if (match) {
-      room = `textroom-${socket.id}-${match.socketId}`;
-
-      socket.leave(`waitingroom-${socket.id}`);
-      match.socket.leave(`waitingroom-${match.socketId}`);
-
-      socket.join(room);
-      match.socket.join(room);
-
-      rooms["text"][room] = {
-        users: [socket.id, match.socketId],
-        settings: settings,
-      };
-
-      textNamespace
-        .to(room)
-        .emit("updateUsersCount", rooms["text"][room].users.length);
-
-      textNamespace.to(room).emit("chat ready");
-
-      users.splice(users.indexOf(match), 1);
-
-      socket.room = room;
-      match.socket.room = room;
+      isMatchConnecting(
+        rooms,
+        match,
+        socket,
+        room,
+        "text",
+        settings,
+        textNamespace,
+        users
+      );
     } else {
-      users.push({ socketId: socket.id, settings, socket });
-
-      room = `waitingroom-${socket.id}`;
-      socket.join(room);
-
-      rooms["text"][room] = {
-        users: [socket.id],
-        settings: settings,
-      };
-
-      textNamespace
-        .to(room)
-        .emit("updateUsersCount", rooms["text"][room].users.length);
-
-      socket.room = room;
+      connectingToWaitingRoom(
+        rooms,
+        users,
+        socket,
+        textNamespace,
+        settings,
+        room,
+        "text"
+      );
     }
 
     socket.on("leave waiting room", () => {
-      users.splice(
-        users.findIndex((user) => user.socketId === socket.id),
-        1
-      );
-      socket.leave(`waitingroom-${socket.id}`);
+      leaveWaitingRoom(socket, users);
     });
 
     socket.on("chat message", (msg) => {
@@ -153,22 +90,14 @@ textNamespace.on("connection", (socket) => {
     });
 
     socket.on("disconnect", () => {
-      const room = socket.room;
-
-      if (rooms["text"][room]) {
-        rooms["text"][room].users = rooms["text"][room].users.filter(
-          (id) => id !== socket.id
-        );
-
-        textNamespace
-          .to(room)
-          .emit("updateUsersCount", rooms["text"][room].users.length);
-
-        if (rooms["text"][room].users.length < 2) {
-          textNamespace.to(room).emit("chat not ready");
-          delete rooms["text"][room];
-        }
-      }
+      disconnectSocket(
+        rooms,
+        socket.room,
+        socket.id,
+        textNamespace,
+        "text",
+        false
+      );
     });
   });
 });
@@ -184,82 +113,41 @@ voiceNamespace.on("connection", (socket) => {
     let room;
 
     if (match) {
-      room = `voiceroom-${socket.id}-${match.socketId}`;
-
-      socket.leave(`waitingroom-${socket.id}`);
-      match.socket.leave(`waitingroom-${match.socketId}`);
-
-      socket.join(room);
-      match.socket.join(room);
-
-      rooms["voice"][room] = {
-        users: [socket.id, match.socketId],
-        settings: settings,
-      };
-
-      voiceNamespace
-        .to(room)
-        .emit("updateUsersCount", rooms["voice"][room].users.length);
-
-      match.socket.emit("is-initiator", true);
-      socket.emit("is-initiator", false);
-
-      voiceNamespace.to(room).emit("chat ready");
-
-      socket.on("peer-id", (peerId) => {
-        socket.to(room).emit("peer-id", peerId);
-      });
-
-      voiceUsers.splice(voiceUsers.indexOf(match), 1);
-
-      socket.room = room;
-      match.socket.room = room;
+      isMatchConnecting(
+        rooms,
+        match,
+        socket,
+        room,
+        "voice",
+        settings,
+        voiceNamespace,
+        voiceUsers
+      );
     } else {
-      voiceUsers.push({ socketId: socket.id, settings, socket });
-
-      room = `waitingroom-${socket.id}`;
-      socket.join(room);
-
-      rooms["voice"][room] = {
-        users: [socket.id],
-        settings: settings,
-      };
-
-      voiceNamespace
-        .to(room)
-        .emit("updateUsersCount", rooms["voice"][room].users.length);
-
-      socket.room = room;
+      connectingToWaitingRoom(
+        rooms,
+        voiceUsers,
+        socket,
+        voiceNamespace,
+        settings,
+        room,
+        "voice"
+      );
     }
 
     socket.on("leave waiting room", () => {
-      voiceUsers.splice(
-        voiceUsers.findIndex((user) => user.socketId === socket.id),
-        1
-      );
-      socket.leave(`waitingroom-${socket.id}`);
+      leaveWaitingRoom(socket, voiceUsers);
     });
 
     socket.on("disconnect", () => {
-      const room = socket.room;
-
-      if (rooms["voice"][room]) {
-        rooms["voice"][room].users = rooms["voice"][room].users.filter(
-          (id) => id !== socket.id
-        );
-
-        if (rooms["voice"][room].users.length === 1) {
-          voiceNamespace.to(room).emit("end call");
-        }
-        voiceNamespace
-          .to(room)
-          .emit("updateUsersCount", rooms["voice"][room].users.length);
-
-        if (rooms["voice"][room].users.length < 2) {
-          voiceNamespace.to(room).emit("voice chat not ready");
-          delete rooms["voice"][room];
-        }
-      }
+      disconnectSocket(
+        rooms,
+        socket.room,
+        socket.id,
+        voiceNamespace,
+        "voice",
+        true
+      );
     });
   });
 });

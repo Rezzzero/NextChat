@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import MainLoader from "../components/Loader/MainLoader";
 import { io, Socket } from "socket.io-client";
 import { DefaultEventsMap } from "socket.io";
 import ChatButton from "../components/buttons/ChatButton";
 import ChatSettings from "../components/Settings/ChatSettings";
-import { defaultSettings } from "../constants/constants";
 import StartButton from "../components/buttons/StartButton";
+import { useChatSettings } from "../hooks/settings/useChatSettings";
 
 const Chat = () => {
   const [startSession, setStartSession] = useState(false);
@@ -20,29 +20,9 @@ const Chat = () => {
   const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
     null
   );
-  const [selectedSettings, setSelectedSettings] = useState<{
-    selectedGender: string;
-    selectedAge: string;
-    selectedCompanionGender: string;
-    selectedCompanionAges: string[];
-  }>(defaultSettings);
-  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.localStorage) {
-      const savedSettings = localStorage.getItem("chatSettings");
-      if (savedSettings) {
-        setSelectedSettings(JSON.parse(savedSettings));
-      }
-      setIsSettingsLoaded(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isSettingsLoaded) {
-      localStorage.setItem("chatSettings", JSON.stringify(selectedSettings));
-    }
-  }, [selectedSettings, isSettingsLoaded]);
+  const { selectedSettings, setSelectedSettings } = useChatSettings({
+    storage: "chatSettings",
+  });
 
   const toggleSession = () => {
     if (startSession) {

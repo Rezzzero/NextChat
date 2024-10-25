@@ -11,8 +11,8 @@ import MicOffIcon from "@mui/icons-material/MicOff";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
 import ChatSettings from "../components/Settings/ChatSettings";
-import { defaultSettings } from "../constants/constants";
 import StartButton from "../components/buttons/StartButton";
+import { useChatSettings } from "../hooks/settings/useChatSettings";
 
 const VoiceChat = () => {
   const [startSession, setStartSession] = useState(false);
@@ -25,32 +25,9 @@ const VoiceChat = () => {
   const peerRef = useRef<Peer | null>(null);
   const currentCallRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [selectedSettings, setSelectedSettings] = useState<{
-    selectedGender: string;
-    selectedAge: string;
-    selectedCompanionGender: string;
-    selectedCompanionAges: string[];
-  }>(defaultSettings);
-  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.localStorage) {
-      const savedSettings = localStorage.getItem("voiceChatSettings");
-      if (savedSettings) {
-        setSelectedSettings(JSON.parse(savedSettings));
-      }
-      setIsSettingsLoaded(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isSettingsLoaded) {
-      localStorage.setItem(
-        "voiceChatSettings",
-        JSON.stringify(selectedSettings)
-      );
-    }
-  }, [selectedSettings, isSettingsLoaded]);
+  const { selectedSettings, setSelectedSettings } = useChatSettings({
+    storage: "voiceChatSettings",
+  });
 
   useEffect(() => {
     const handleRemoteStream = (remoteStream: MediaStream) => {
