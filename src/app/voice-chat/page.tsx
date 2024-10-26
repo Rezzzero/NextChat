@@ -13,6 +13,7 @@ import "rc-slider/assets/index.css";
 import ChatSettings from "../components/Settings/ChatSettings";
 import StartButton from "../components/buttons/StartButton";
 import { useChatSettings } from "../hooks/settings/useChatSettings";
+import { ThemeSettings } from "../components/Settings/ThemeSettings";
 
 const VoiceChat = () => {
   const [startSession, setStartSession] = useState(false);
@@ -162,59 +163,65 @@ const VoiceChat = () => {
   };
 
   return (
-    <div className="container max-w-2xl h-[94vh] mx-auto text-2xl bg-[#1c1c1c] text-white">
-      <div className="h-[5vh] bg-[#26292e] flex border-b-2 border-[#37527a] p-2 gap-2">
-        <p className="text-[#37527a]">Голосовой чат</p>
-        <p>от NextChat.com</p>
-      </div>
-      <div className="flex flex-col justify-center">
-        {!startSession && (
-          <div className="w-full my-[60px] flex flex-col justify-center items-center">
-            <ChatSettings
-              selectedSettings={selectedSettings}
-              setSelectedSettings={setSelectedSettings}
-            />
-            <StartButton
-              agePicked={
-                selectedSettings.selectedGender === "someone" ||
-                (selectedSettings.selectedGender !== "someone" &&
-                  selectedSettings.selectedAge)
-              }
-              toggleSession={toggleSession}
-              text="Начать разговор"
-            />
-          </div>
-        )}
-        {startSession && chatReady && (
-          <div className="w-full my-[60px] flex flex-col items-center">
-            <div className="w-[100px] flex justify-center">
-              <Slider
-                min={0}
-                max={100}
-                step={1}
-                value={volume}
-                onChange={handleVolumeChange}
-                trackStyle={{ backgroundColor: "#5138E9" }}
-                handleStyle={{ backgroundColor: "#5138E9" }}
+    <div className="bg-background">
+      <div className="container max-w-2xl h-[94vh] mx-auto text-2xl bg-chatColor text-textColor">
+        <div className="h-[5vh] bg-chatHeaderBg flex border-b-2 border-[#37527a] p-2 gap-2">
+          <p className="text-[#37527a] font-bold">Голосовой чат</p>
+          <p>от NextChat.com</p>
+        </div>
+        <div className="flex flex-col justify-center">
+          {!startSession && (
+            <div className="w-full my-[60px] flex flex-col justify-center items-center">
+              <ChatSettings
+                selectedSettings={selectedSettings}
+                setSelectedSettings={setSelectedSettings}
+              />
+              <ThemeSettings />
+              <StartButton
+                agePicked={
+                  selectedSettings.selectedGender === "someone" ||
+                  (selectedSettings.selectedGender !== "someone" &&
+                    selectedSettings.selectedAge)
+                }
+                toggleSession={toggleSession}
+                text="Начать разговор"
               />
             </div>
-            <p>Голосовой чат готов!</p>
-            <button onClick={toggleMute} className="mute-button">
-              {isMuted ? <MicOffIcon sx={{ color: "red" }} /> : <MicIcon />}
-            </button>
-            <ChatButton
-              toggleSession={toggleSession}
-              text="Закончить разговор"
-            />
-          </div>
-        )}
-        {startSession && !chatReady && (
-          <div className="w-full my-[60px] flex flex-col items-center">
-            <MainLoader />
-            <p className="text-center">Поиск собеседника...</p>
-            <ChatButton toggleSession={toggleSession} text="Остановить поиск" />
-          </div>
-        )}
+          )}
+          {startSession && chatReady && (
+            <div className="w-full my-[60px] flex flex-col items-center">
+              <div className="w-[100px] flex justify-center">
+                <Slider
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={volume}
+                  onChange={handleVolumeChange}
+                  trackStyle={{ backgroundColor: "#5138E9" }}
+                  handleStyle={{ backgroundColor: "#5138E9" }}
+                />
+              </div>
+              <p>Голосовой чат готов!</p>
+              <button onClick={toggleMute} className="mute-button">
+                {isMuted ? <MicOffIcon sx={{ color: "red" }} /> : <MicIcon />}
+              </button>
+              <ChatButton
+                toggleSession={toggleSession}
+                text="Закончить разговор"
+              />
+            </div>
+          )}
+          {startSession && !chatReady && (
+            <div className="w-full my-[60px] flex flex-col items-center">
+              <MainLoader />
+              <p className="text-center">Поиск собеседника...</p>
+              <ChatButton
+                toggleSession={toggleSession}
+                text="Остановить поиск"
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

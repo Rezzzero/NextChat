@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background: #2b343f;
+html[data-theme="dark"] {
+  --background: #2b343f;
+  --chat-header-bg: #26292e;
+  --chat-color: #1c1c1c;
+  --text-color: white;
+  --filter-button: #cccccc;
+  --filter-button-active: #304d78;
+  --filter-button-border: rgb(107 114 128);
+  --filter-button-disabled: rgb(107 114 128);
+  --filter-button-text-disabled: rgb(55 65 81);
+}
+
+html[data-theme="light"] {
+  --background: #b3bcc9;
+  --chat-header-bg: #c5d5ed;
+  --chat-color: white;
+  --text-color: rgb(100 116 139);
+  --filter-button: white;
+  --filter-button-active: #3676d6;
+  --filter-button-border: rgb(107 114 128);
+  --filter-button-disabled: white;
+  --filter-button-text-disabled: rgb(155, 157, 161);
 }

@@ -10,7 +10,14 @@ const config: Config = {
     extend: {
       colors: {
         background: "var(--background)",
-        foreground: "var(--foreground)",
+        chatHeaderBg: "var(--chat-header-bg)",
+        chatColor: "var(--chat-color)",
+        textColor: "var(--text-color)",
+        filterButton: "var(--filter-button)",
+        filterButtonActive: "var(--filter-button-active)",
+        filterButtonBorder: "var(--filter-button-border)",
+        filterButtonDisabled: "var(--filter-button-disabled)",
+        filterButtonTextDisabled: "var(--filter-button-text-disabled)",
       },
     },
   },

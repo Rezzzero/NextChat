@@ -13,7 +13,7 @@ const FilterButton = ({
     return (
       <button
         type="button"
-        className="text-gray-700 bg-gray-500 text-lg w-[250px] py-1 my-2 rounded-lg"
+        className="text-filterButtonTextDisabled bg-filterButtonDisabled text-lg w-[250px] py-1 my-2 rounded-lg"
         onClick={onClick}
         disabled={true}
       >
@@ -25,7 +25,9 @@ const FilterButton = ({
     <button
       type="button"
       className={`${
-        isActive ? "text-white bg-[#304d78]" : "text-black bg-[#cccccc]"
+        isActive
+          ? "text-white bg-filterButtonActive"
+          : "text-black bg-filterButton border-2 border-filterButtonBorder"
       } text-lg w-[250px] py-1 my-2 rounded-lg`}
       onClick={onClick}
     >
