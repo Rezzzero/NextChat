@@ -38,8 +38,8 @@ export const isMatchConnecting = (
   namespace.to(room).emit("chat ready");
 
   if (roomType === "voice") {
-    socket.on("peer-id", (peerId) => {
-      socket.to(room).emit("peer-id", peerId);
+    socket.on("voice-data", (audioData) => {
+      namespace.to(socket.room).emit("voice-data", audioData);
     });
   }
 
