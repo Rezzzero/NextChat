@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { Server } from "socket.io";
 import cors from "cors";
-import { ExpressPeerServer } from "peer";
 import {
   isMatchConnecting,
   leaveWaitingRoom,
@@ -22,13 +21,6 @@ const io = new Server(httpServer, {
   },
   path: "/socket.io",
 });
-
-const peerServer = ExpressPeerServer(httpServer, {
-  debug: true,
-  path: "/peerjs",
-});
-
-app.use("/peerjs", peerServer);
 
 app.use(cors());
 

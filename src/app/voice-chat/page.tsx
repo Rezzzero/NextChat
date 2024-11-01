@@ -18,16 +18,19 @@ const VoiceChat = () => {
   const [startSession, setStartSession] = useState(false);
   const [chatReady, setChatReady] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const isMutedRef = useRef(isMuted);
   const [volume, setVolume] = useState(100);
   const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
     null
   );
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioStreamRef = useRef<MediaStream | null>(null);
   const { selectedSettings, setSelectedSettings } = useChatSettings({
     storage: "voiceChatSettings",
   });
+
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
 
   useEffect(() => {
     if (startSession) {
@@ -44,7 +47,7 @@ const VoiceChat = () => {
         startRecordingLoop();
       });
 
-      socketRef.current.on("voice-data", (audioData) => {
+      socketRef.current.on("voice-data", ({ audioData }) => {
         playAudioStream(audioData);
       });
 
@@ -80,17 +83,19 @@ const VoiceChat = () => {
     };
 
     mediaRecorderRef.current.ondataavailable = (event) => {
-      const audioBlob = event.data;
-      const reader = new FileReader();
-      reader.readAsDataURL(audioBlob);
-      reader.onloadend = () => {
-        let base64Audio: string | undefined;
+      if (!isMutedRef.current) {
+        const audioBlob = event.data;
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+          let base64Audio: string | undefined;
 
-        if (typeof reader.result === "string") {
-          base64Audio = reader.result.split(",")[1];
-        }
-        socketRef.current?.emit("voice-data", base64Audio);
-      };
+          if (typeof reader.result === "string") {
+            base64Audio = reader.result.split(",")[1];
+          }
+          socketRef.current?.emit("voice-data", base64Audio);
+        };
+      }
     };
 
     mediaRecorderRef.current.onerror = (event) => {
@@ -102,7 +107,7 @@ const VoiceChat = () => {
     mediaRecorderRef.current.onstop = recordCycle;
   };
 
-  const playAudioStream = (audioData) => {
+  const playAudioStream = (audioData: string) => {
     const audio = new Audio(`data:audio/wav;base64,${audioData}`);
     audio.play().catch((error) => {
       console.error("Error playing audio:", error);
@@ -114,13 +119,8 @@ const VoiceChat = () => {
     setChatReady(false);
     setIsMuted(false);
     setVolume(100);
-    if (audioStreamRef.current) {
-      audioStreamRef.current.getTracks().forEach((track) => track.stop());
-      audioStreamRef.current = null;
-    }
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
     }
   };
 
@@ -132,20 +132,12 @@ const VoiceChat = () => {
   };
 
   const toggleMute = () => {
-    if (audioStreamRef.current) {
-      audioStreamRef.current
-        .getAudioTracks()
-        .forEach((track) => (track.enabled = !track.enabled));
-      setIsMuted(!isMuted);
-    }
+    setIsMuted((prev) => !prev);
   };
 
   const handleVolumeChange = (value: number | number[]) => {
     const volumeValue = Array.isArray(value) ? value[0] : value;
     setVolume(volumeValue);
-    if (audioRef.current) {
-      audioRef.current.volume = volumeValue / 100;
-    }
   };
 
   return (

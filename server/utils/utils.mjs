@@ -30,16 +30,21 @@ export const isMatchConnecting = (
 
   updateUsersCount(rooms, namespace, roomType, room);
 
-  if (roomType === "voice") {
-    match.socket.emit("is-initiator", true);
-    socket.emit("is-initiator", false);
-  }
-
   namespace.to(room).emit("chat ready");
 
   if (roomType === "voice") {
+    const sendVoiceData = (targetSocket, audioData) => {
+      targetSocket.emit("voice-data", {
+        audioData,
+      });
+    };
+
     socket.on("voice-data", (audioData) => {
-      namespace.to(socket.room).emit("voice-data", audioData);
+      sendVoiceData(match.socket, audioData);
+    });
+
+    match.socket.on("voice-data", (audioData) => {
+      sendVoiceData(socket, audioData);
     });
   }
 
