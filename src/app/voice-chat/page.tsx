@@ -1,6 +1,5 @@
 "use client";
 
-import Peer from "peerjs";
 import { useEffect, useRef, useState } from "react";
 import { DefaultEventsMap } from "socket.io";
 import { io, Socket } from "socket.io-client";
@@ -19,26 +18,26 @@ const VoiceChat = () => {
   const [startSession, setStartSession] = useState(false);
   const [chatReady, setChatReady] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const isMutedRef = useRef(isMuted);
   const [volume, setVolume] = useState(100);
+  const volumeRef = useRef(volume);
   const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
     null
   );
-  const peerRef = useRef<Peer | null>(null);
-  const currentCallRef = useRef<MediaStream | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const { selectedSettings, setSelectedSettings } = useChatSettings({
     storage: "voiceChatSettings",
   });
 
   useEffect(() => {
-    const handleRemoteStream = (remoteStream: MediaStream) => {
-      const audio = new Audio();
-      audio.srcObject = remoteStream;
-      audio.volume = volume / 100;
-      audio.play();
-      audioRef.current = audio;
-    };
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
 
+  useEffect(() => {
+    volumeRef.current = volume;
+  }, [volume]);
+
+  useEffect(() => {
     if (startSession) {
       socketRef.current = io("http://localhost:3001/voice-chat", {
         path: "/socket.io",
@@ -48,70 +47,17 @@ const VoiceChat = () => {
         socketRef.current?.emit("set filters", selectedSettings);
       });
 
-      socketRef.current.on("is-initiator", (isInitiator: boolean) => {
-        peerRef.current = new Peer();
-
-        peerRef.current.on("open", (peerId) => {
-          socketRef.current?.emit("peer-id", peerId);
-        });
-
-        if (isInitiator) {
-          socketRef.current?.on("peer-id", (peerId) => {
-            if (peerRef.current?.id !== peerId) {
-              navigator.mediaDevices
-                .getUserMedia({ audio: true })
-                .then((stream) => {
-                  currentCallRef.current = stream;
-                  const call = peerRef.current?.call(peerId, stream);
-
-                  call?.on("stream", handleRemoteStream);
-                })
-                .catch((error) => {
-                  console.error("Error accessing audio stream:", error);
-                });
-            }
-          });
-        } else {
-          peerRef.current.on("call", (call) => {
-            navigator.mediaDevices
-              .getUserMedia({ audio: true })
-              .then((stream) => {
-                currentCallRef.current = stream;
-                call.answer(stream);
-
-                call?.on("stream", handleRemoteStream);
-              })
-              .catch((error) => {
-                console.error("Error accessing audio stream:", error);
-              });
-          });
-        }
-      });
-
       socketRef.current.on("chat ready", () => {
         setChatReady(true);
+        startRecordingLoop();
+      });
+
+      socketRef.current.on("voice-data", ({ audioData }) => {
+        playAudioStream(audioData);
       });
 
       socketRef.current.on("end call", () => {
-        setStartSession(false);
-        setChatReady(false);
-        setIsMuted(false);
-        setVolume(100);
-        audioRef.current = null;
-
-        if (currentCallRef.current) {
-          currentCallRef.current.getTracks().forEach((track) => {
-            track.stop();
-          });
-
-          currentCallRef.current = null;
-        }
-
-        if (peerRef.current) {
-          peerRef.current.destroy();
-
-          peerRef.current = null;
-        }
+        endCallCleanup();
       });
 
       socketRef.current.on("chat not ready", () => {
@@ -121,45 +67,83 @@ const VoiceChat = () => {
       return () => {
         socketRef.current?.emit("leave waiting room");
         socketRef.current?.disconnect();
-        setChatReady(false);
-        if (peerRef.current) {
-          peerRef.current.destroy();
-        }
-        peerRef.current = new Peer();
-        setStartSession(false);
+        endCallCleanup();
       };
     }
   }, [startSession]);
 
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume / 100;
-    } else {
-      console.log("No audio reference available");
+  const startRecordingLoop = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorderRef.current = new MediaRecorder(stream);
+
+    const recordCycle = () => {
+      if (mediaRecorderRef.current?.state !== "recording") {
+        mediaRecorderRef.current?.start();
+      }
+      setTimeout(() => {
+        if (mediaRecorderRef.current?.state === "recording") {
+          mediaRecorderRef.current?.stop();
+        }
+      }, 1000);
+    };
+
+    mediaRecorderRef.current.ondataavailable = (event) => {
+      if (!isMutedRef.current) {
+        const audioBlob = event.data;
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+          let base64Audio: string | undefined;
+
+          if (typeof reader.result === "string") {
+            base64Audio = reader.result.split(",")[1];
+          }
+          socketRef.current?.emit("voice-data", base64Audio);
+        };
+      }
+    };
+
+    mediaRecorderRef.current.onerror = (event) => {
+      console.error("Ошибка записи:", event.error);
+    };
+
+    recordCycle();
+
+    mediaRecorderRef.current.onstop = recordCycle;
+  };
+
+  const playAudioStream = (audioData: string) => {
+    const audio = new Audio(`data:audio/wav;base64,${audioData}`);
+    audio.volume = volumeRef.current / 100;
+    audio.play().catch((error) => {
+      console.error("Error playing audio:", error);
+    });
+  };
+
+  const endCallCleanup = () => {
+    setStartSession(false);
+    setChatReady(false);
+    setIsMuted(false);
+    setVolume(100);
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
     }
-  }, [volume]);
+  };
 
   const toggleSession = () => {
-    setStartSession(!startSession);
+    setStartSession((prev) => !prev);
+    if (startSession) {
+      endCallCleanup();
+    }
   };
 
   const toggleMute = () => {
-    if (currentCallRef.current) {
-      const audioTracks = currentCallRef.current.getAudioTracks();
-      audioTracks.forEach((track) => {
-        track.enabled = !track.enabled;
-      });
-      setIsMuted(!isMuted);
-    }
+    setIsMuted((prev) => !prev);
   };
 
   const handleVolumeChange = (value: number | number[]) => {
     const volumeValue = Array.isArray(value) ? value[0] : value;
-
     setVolume(volumeValue);
-    if (audioRef.current) {
-      audioRef.current.volume = volumeValue / 100;
-    }
   };
 
   return (
