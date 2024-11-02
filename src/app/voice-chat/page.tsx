@@ -20,6 +20,7 @@ const VoiceChat = () => {
   const [isMuted, setIsMuted] = useState(false);
   const isMutedRef = useRef(isMuted);
   const [volume, setVolume] = useState(100);
+  const volumeRef = useRef(volume);
   const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
     null
   );
@@ -31,6 +32,10 @@ const VoiceChat = () => {
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
+
+  useEffect(() => {
+    volumeRef.current = volume;
+  }, [volume]);
 
   useEffect(() => {
     if (startSession) {
@@ -109,6 +114,7 @@ const VoiceChat = () => {
 
   const playAudioStream = (audioData: string) => {
     const audio = new Audio(`data:audio/wav;base64,${audioData}`);
+    audio.volume = volumeRef.current / 100;
     audio.play().catch((error) => {
       console.error("Error playing audio:", error);
     });
