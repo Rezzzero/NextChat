@@ -9,6 +9,7 @@ import ChatSettings from "../components/Settings/ChatSettings";
 import StartButton from "../components/buttons/StartButton";
 import { useChatSettings } from "../hooks/settings/useChatSettings";
 import { ThemeSettings } from "../components/Settings/ThemeSettings";
+import Link from "next/link";
 
 const Chat = () => {
   const [startSession, setStartSession] = useState(false);
@@ -81,8 +82,8 @@ const Chat = () => {
 
   return (
     <div className="bg-background">
-      <div className="container max-w-2xl h-[94vh] mx-auto text-2xl bg-chatColor text-textColor">
-        <div className="h-[5vh] bg-chatHeaderBg flex border-b-2 border-[#37527a] p-2 gap-2">
+      <div className="container max-w-2xl h-screen md:h-[94vh] mx-auto text-lg md:text-2xl bg-chatColor text-textColor">
+        <div className="h-[5vh] bg-chatHeaderBg hidden md:flex border-b-2 border-[#37527a] p-2 gap-2">
           <p className="text-[#37527a] font-bold">Чат</p>
           <p>от NextChat.com</p>
         </div>
@@ -124,7 +125,7 @@ const Chat = () => {
             </div>
           )}
           {!startSession && (
-            <div className="w-full my-[60px] flex flex-col justify-center items-center">
+            <div className="w-full my-[30px] md:my-[60px] flex flex-col justify-center items-center">
               <ChatSettings
                 selectedSettings={selectedSettings}
                 setSelectedSettings={setSelectedSettings}
@@ -137,6 +138,7 @@ const Chat = () => {
                     selectedSettings.selectedAge)
                 }
                 toggleSession={toggleSession}
+                type="text"
                 text="Начать Чат"
               />
             </div>

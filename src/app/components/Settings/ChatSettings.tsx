@@ -60,9 +60,9 @@ const ChatSettings = ({
 
   return (
     <div>
-      <div className="flex gap-12">
+      <div className="flex justify-center gap-4 md:gap-12">
         <div className="flex flex-col">
-          <p className="text-lg font-bold">Ваш пол:</p>
+          <p className="text-sm md:text-lg font-bold">Ваш пол:</p>
           {yourGender.map((gender) => (
             <FilterButton
               key={gender.value}
@@ -75,7 +75,7 @@ const ChatSettings = ({
         </div>
 
         <div className="flex flex-col">
-          <p className="text-lg font-bold">Пол собеседника:</p>
+          <p className="text-sm md:text-lg font-bold">Пол собеседника:</p>
           {companionsGender.map((gender) => (
             <FilterButton
               key={gender.value}
@@ -90,9 +90,9 @@ const ChatSettings = ({
         </div>
       </div>
 
-      <div className="flex gap-12">
+      <div className="flex justify-center gap-4 md:gap-12">
         <div className="flex flex-col">
-          <p className="text-lg font-bold">Ваш возраст:</p>
+          <p className="text-sm md:text-lg font-bold">Ваш возраст:</p>
           {Age.map((age) => (
             <FilterButton
               key={age.value}
@@ -105,7 +105,7 @@ const ChatSettings = ({
         </div>
 
         <div className="flex flex-col">
-          <p className="text-lg font-bold">Возраст собеседника:</p>
+          <p className="text-sm md:text-lg font-bold">Возраст собеседника:</p>
           {Age.map((age) => (
             <FilterButton
               key={age.value}
@@ -122,7 +122,7 @@ const ChatSettings = ({
       <div>
         {selectedSettings.selectedGender !== "someone" &&
           !selectedSettings.selectedAge && (
-            <p className="text-lg font-bold text-red-500">
+            <p className="text-sm md:text-lg font-bold text-red-500">
               Выберите ваш возраст
             </p>
           )}

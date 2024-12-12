@@ -13,7 +13,7 @@ const FilterButton = ({
     return (
       <button
         type="button"
-        className="text-filterButtonTextDisabled bg-filterButtonDisabled text-lg w-[250px] py-1 my-2 rounded-lg"
+        className="text-filterButtonTextDisabled bg-filterButtonDisabled text-sm md:text-lg w-[180px] md:w-[250px] py-1 my-2 rounded-lg"
         onClick={onClick}
         disabled={true}
       >
@@ -28,7 +28,7 @@ const FilterButton = ({
         isActive
           ? "text-white bg-filterButtonActive"
           : "text-black bg-filterButton border-2 border-filterButtonBorder"
-      } text-lg w-[250px] py-1 my-2 rounded-lg`}
+      } text-sm md:text-lg w-[180px] md:w-[250px] py-1 my-2 rounded-lg`}
       onClick={onClick}
     >
       {text}
