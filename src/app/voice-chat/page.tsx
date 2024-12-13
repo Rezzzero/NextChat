@@ -28,6 +28,7 @@ const VoiceChat = () => {
   const { selectedSettings, setSelectedSettings } = useChatSettings({
     storage: "voiceChatSettings",
   });
+  const [timer, setTimer] = useState(0);
 
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -146,6 +147,33 @@ const VoiceChat = () => {
     setVolume(volumeValue);
   };
 
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+      2,
+      "0"
+    )}:${String(remainingSeconds).padStart(2, "0")}`;
+  };
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+    if (startSession && chatReady) {
+      intervalId = setInterval(() => {
+        setTimer((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (intervalId) clearInterval(intervalId);
+      setTimer(0);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      setTimer(0);
+    };
+  }, [startSession, chatReady]);
+
   return (
     <div className="bg-background">
       <div className="container w-[100%] md:max-w-2xl h-screen md:h-[94vh] mx-auto text-lg md:text-2xl bg-chatColor text-textColor">
@@ -187,6 +215,9 @@ const VoiceChat = () => {
                 />
               </div>
               <p>Голосовой чат готов!</p>
+              <p className="text-[#37527a]">
+                Время разговора: {formatTime(timer)}
+              </p>
               <button onClick={toggleMute} className="mute-button">
                 {isMuted ? <MicOffIcon sx={{ color: "red" }} /> : <MicIcon />}
               </button>
