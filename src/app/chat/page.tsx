@@ -9,11 +9,9 @@ import ChatSettings from "../components/Settings/ChatSettings";
 import StartButton from "../components/buttons/StartButton";
 import { useChatSettings } from "../hooks/settings/useChatSettings";
 import { ThemeSettings } from "../components/Settings/ThemeSettings";
-import Link from "next/link";
 
 const Chat = () => {
   const [startSession, setStartSession] = useState(false);
-  const [connectedUsers, setConnectedUsers] = useState(0);
   const [message, setMessage] = useState("");
   const [chatMessages, setChatMessages] = useState<
     { id: string; message: string }[]
@@ -43,10 +41,6 @@ const Chat = () => {
 
       socketRef.current.on("connect", () => {
         socketRef.current?.emit("set filters", selectedSettings);
-      });
-
-      socketRef.current.on("updateUsersCount", (count) => {
-        setConnectedUsers(count);
       });
 
       socketRef.current.on("chat ready", () => {
@@ -88,7 +82,7 @@ const Chat = () => {
           <p>от NextChat.com</p>
         </div>
         <div className="max-h-[90%] flex flex-col justify-center">
-          {startSession && connectedUsers < 2 && !chatReady ? (
+          {startSession && !chatReady ? (
             <div className="w-full my-[60px]">
               <MainLoader />
               <p className="text-center">Поиск собеседника...</p>
@@ -143,7 +137,7 @@ const Chat = () => {
               />
             </div>
           )}
-          {startSession && connectedUsers !== 2 && (
+          {startSession && !chatReady && (
             <ChatButton toggleSession={toggleSession} text="Остановить Поиск" />
           )}
           {startSession && chatReady && (
