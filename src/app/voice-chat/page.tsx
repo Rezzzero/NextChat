@@ -29,6 +29,7 @@ const VoiceChat = () => {
     storage: "voiceChatSettings",
   });
   const [timer, setTimer] = useState(0);
+  const [isinterlocutorMuted, setIsinterlocutorMuted] = useState(false);
 
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -55,6 +56,10 @@ const VoiceChat = () => {
 
       socketRef.current.on("voice-data", ({ audioData }) => {
         playAudioStream(audioData);
+      });
+
+      socketRef.current.on("interlocutor muted or unmuted", ({ muted }) => {
+        setIsinterlocutorMuted(muted);
       });
 
       socketRef.current.on("end call", () => {
@@ -139,7 +144,13 @@ const VoiceChat = () => {
   };
 
   const toggleMute = () => {
-    setIsMuted((prev) => !prev);
+    setIsMuted((prev) => {
+      const newMutedState = !prev;
+      socketRef.current?.emit("interlocutor muted or unmuted", {
+        muted: newMutedState,
+      });
+      return newMutedState;
+    });
   };
 
   const handleVolumeChange = (value: number | number[]) => {
@@ -214,6 +225,9 @@ const VoiceChat = () => {
                   handleStyle={{ backgroundColor: "#5138E9" }}
                 />
               </div>
+              {isinterlocutorMuted && (
+                <p className="text-red-500">Собеседник отключил микрофон</p>
+              )}
               <p>Голосовой чат готов!</p>
               <p className="text-[#37527a]">
                 Время разговора: {formatTime(timer)}

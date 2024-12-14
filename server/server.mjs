@@ -127,6 +127,12 @@ voiceNamespace.on("connection", (socket) => {
       );
     }
 
+    socket.on("interlocutor muted or unmuted", ({ muted }) => {
+      socket.to(socket.room).emit("interlocutor muted or unmuted", {
+        muted,
+      });
+    });
+
     socket.on("leave waiting room", () => {
       leaveWaitingRoom(socket, voiceUsers);
     });
