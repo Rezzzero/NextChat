@@ -25,11 +25,11 @@ NextChat позволяет пользователям общаться в ре�
 
 ```bash
 
-# Запуск клиента
-npm run dev
-
 # Запуск сервера
 npm run start:server
+
+# Запуск клиента
+npm run dev
 
 # Сборка проекта
 npm run build
@@ -45,9 +45,11 @@ npm run lint
 ## 📦 Установка
 
 ```bash 
-git clone https://github.com/Rezzzero/spotify-lite.git
-cd spotify-lite
+
+git clone https://github.com/Rezzzero/NextChat.git
+cd NextChat
 npm install
+npm run start:server
 npm run dev
 ```
 
